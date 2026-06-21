@@ -1,8 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
+    ],
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "200mb",
+    },
+    middlewareClientMaxBodySize: "200mb",
+  },
 };
 
 export default nextConfig;
