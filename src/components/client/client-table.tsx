@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown, X, Package, Download } from "lucide-react";
-import { exportToExcel } from "@/lib/export-to-excel";
+import { exportCatalogoExcel } from "@/app/admin/actions";
 import { MultiFilter } from "@/components/multi-filter";
 import { getDiscountColor } from "@/lib/discount-colors";
+import { toast } from "sonner";
 import type { ExportProduct } from "@/types";
 
 interface ProductoClient {
@@ -196,7 +197,22 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
               try {
                 const rows = table.getFilteredRowModel().rows;
                 const allData: ExportProduct[] = rows.map((r) => r.original as ExportProduct);
-                await exportToExcel(allData);
+                const result = await exportCatalogoExcel(allData);
+                if (result.success && result.buffer) {
+                  const binary = atob(result.buffer);
+                  const bytes = new Uint8Array(binary.length);
+                  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                  const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "catalogo_productos.xlsx";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("Excel exportado.");
+                } else {
+                  toast.error(result.msg);
+                }
               } finally {
                 setExporting(false);
               }

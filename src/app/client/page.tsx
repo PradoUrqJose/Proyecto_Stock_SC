@@ -3,7 +3,13 @@ import { ClientTable } from "@/components/client/client-table";
 
 export default async function ClientPage() {
   const result = await turso.execute(
-    `SELECT cod_universal, genero, marca, modelo, categoria, grupo, color, descuento, precio_final, stock_total, imagen_url FROM productos ORDER BY marca, modelo`
+    `SELECT p.cod_universal, p.genero, p.marca, p.modelo, 
+            p.categoria, p.grupo, p.color, p.descuento, 
+            p.precio_final, p.stock_total,
+            COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
+     FROM productos p
+     LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal
+     ORDER BY p.marca, p.modelo`
   );
 
   const productos = result.rows.map((row) => ({

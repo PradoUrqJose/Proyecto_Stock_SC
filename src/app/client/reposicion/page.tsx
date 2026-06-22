@@ -42,9 +42,13 @@ export default async function ClientReposicionPage() {
 
   const placeholders = codigos.map(() => "?").join(",");
   const productosResult = await turso.execute({
-    sql: `SELECT cod_universal, genero, marca, modelo, categoria, grupo, color, descuento, precio_lista, precio_final, stock_total, imagen_url
-          FROM productos
-          WHERE cod_universal IN (${placeholders})`,
+    sql: `SELECT p.cod_universal, p.genero, p.marca, p.modelo, p.categoria, 
+                 p.grupo, p.color, p.descuento, p.precio_lista, p.precio_final, 
+                 p.stock_total, 
+                 COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
+          FROM productos p
+          LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal
+          WHERE p.cod_universal IN (${placeholders})`,
     args: codigos,
   });
 

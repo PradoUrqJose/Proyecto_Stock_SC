@@ -14,7 +14,7 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
 
     const session = await getSession();
     if (!session || session.role !== "admin") {
-      return { success: false, msg: "No autorizado. Debes iniciar sesión como administrador." };
+      return { success: false, msg: "No autorizado." };
     }
 
     const archivoStock = formData.get("stock") as File | null;
@@ -166,6 +166,28 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
       WHERE imagen_url IS NOT NULL AND imagen_url NOT LIKE 'https://%'
     `);
 
+    console.log("🖼️ Poblando producto_imagenes con imágenes del HTML...");
+    await turso.execute(`CREATE TABLE IF NOT EXISTS producto_imagenes (
+      cod_universal TEXT PRIMARY KEY,
+      imagen_url TEXT NOT NULL,
+      source TEXT NOT NULL CHECK(source IN ('archivo', 'sistema')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`);
+    const imagenEntries = Object.entries(dictImagenes).filter(
+      ([, url]) => url !== null
+    );
+    if (imagenEntries.length > 0) {
+      const imagenInserts = imagenEntries.map(([cod, url]) => ({
+        sql: `INSERT INTO producto_imagenes (cod_universal, imagen_url, source)
+              VALUES (?, ?, 'archivo')
+              ON CONFLICT(cod_universal) DO NOTHING`,
+        args: [cod, url] as InValue[],
+      }));
+      for (let i = 0; i < imagenInserts.length; i += 2000) {
+        await turso.batch(imagenInserts.slice(i, i + 2000), "write");
+      }
+    }
+
     revalidatePath("/admin");
     revalidatePath("/client");
 
@@ -237,10 +259,14 @@ export async function buscarReposicion(codigos: string[]): Promise<{ success: bo
     ], "write");
 
     const result = await turso.execute({
-      sql: `SELECT cod_universal, genero, marca, modelo, categoria, grupo, color, descuento, precio_lista, precio_final, stock_total
-            FROM productos
-            WHERE cod_universal IN (${uniqueCodigos.map(() => "?").join(",")})
-            AND descuento > 0`,
+      sql: `SELECT p.cod_universal, p.genero, p.marca, p.modelo, p.categoria, 
+                   p.grupo, p.color, p.descuento, p.precio_lista, p.precio_final, 
+                   p.stock_total,
+                   COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
+            FROM productos p
+            LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal
+            WHERE p.cod_universal IN (${uniqueCodigos.map(() => "?").join(",")})
+            AND p.descuento > 0`,
       args: uniqueCodigos,
     });
 
@@ -327,9 +353,13 @@ export async function obtenerReposicionActual(): Promise<ReposicionItem[]> {
 
     const placeholders = codigos.map(() => "?").join(",");
     const result = await turso.execute({
-      sql: `SELECT cod_universal, genero, marca, modelo, categoria, grupo, color, descuento, precio_lista, precio_final, stock_total
-            FROM productos
-            WHERE cod_universal IN (${placeholders})`,
+      sql: `SELECT p.cod_universal, p.genero, p.marca, p.modelo, p.categoria, 
+                   p.grupo, p.color, p.descuento, p.precio_lista, p.precio_final, 
+                   p.stock_total,
+                   COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
+            FROM productos p
+            LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal
+            WHERE p.cod_universal IN (${placeholders})`,
       args: codigos,
     });
 
@@ -395,6 +425,245 @@ export async function detenerReposicion(): Promise<PipelineResult> {
     revalidatePath("/client/reposicion");
 
     return { success: true, msg: "Reposición detenida. Ya no es visible en cliente." };
+  } catch (error: any) {
+    return { success: false, msg: `Error: ${error.message}` };
+  }
+}
+
+export async function setProductoImagen(
+  cod_universal: string,
+  imagen_url: string
+): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    if (!imagen_url.startsWith("https://")) {
+      return { success: false, msg: "La URL debe ser HTTPS." };
+    }
+
+    await turso.execute({
+      sql: `INSERT INTO producto_imagenes (cod_universal, imagen_url, source, updated_at)
+            VALUES (?, ?, 'sistema', datetime('now'))
+            ON CONFLICT(cod_universal) DO UPDATE SET
+              imagen_url = excluded.imagen_url,
+              source = 'sistema',
+              updated_at = excluded.updated_at`,
+      args: [cod_universal, imagen_url],
+    });
+
+    revalidatePath("/admin/productos");
+    revalidatePath("/client");
+    return { success: true, msg: "Imagen guardada." };
+  } catch (error: any) {
+    return { success: false, msg: `Error: ${error.message}` };
+  }
+}
+
+export async function removeProductoImagen(
+  cod_universal: string
+): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    await turso.execute({
+      sql: "DELETE FROM producto_imagenes WHERE cod_universal = ?",
+      args: [cod_universal],
+    });
+
+    revalidatePath("/admin/productos");
+    revalidatePath("/client");
+    return { success: true, msg: "Imagen eliminada." };
+  } catch (error: any) {
+    return { success: false, msg: `Error: ${error.message}` };
+  }
+}
+
+interface ExportProductInput {
+  cod_universal: string;
+  genero: string;
+  marca: string;
+  modelo: string;
+  categoria: string;
+  grupo: string;
+  color: string;
+  descuento: number;
+  precio_final: number;
+  stock_total: number;
+  imagen_url: string | null;
+}
+
+async function fetchImageServer(url: string): Promise<{ buffer: ArrayBuffer; type: string } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "";
+    const buffer = await res.arrayBuffer();
+    return { buffer, type: contentType };
+  } catch {
+    return null;
+  }
+}
+
+function getExcelImageType(contentType: string): "png" | "jpeg" | "gif" {
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("gif")) return "gif";
+  return "jpeg";
+}
+
+export async function exportCatalogoExcel(
+  products: ExportProductInput[]
+): Promise<{ success: boolean; buffer?: string; msg: string }> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    const ExcelJS = await import("exceljs");
+    const { DISCOUNT_COLORS, DISCOUNT_ORDER } = await import("@/lib/discount-colors");
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Catálogo de Productos");
+
+    const headers = [
+      "Imagen", "Cod. Marca", "Marca", "Modelo", "Género",
+      "Categoría", "Color", "Cant.", "P. Venta",
+      "10%", "20%", "30%", "40%", "50%", "60%", "70%",
+    ];
+    sheet.addRow(headers);
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.eachCell((cell, colNumber) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      if (colNumber >= 10) {
+        const pct = DISCOUNT_ORDER[colNumber - 10];
+        const color = DISCOUNT_COLORS[pct];
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color?.excel ?? "FF000000" } };
+      } else {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+      }
+    });
+    headerRow.height = 30;
+
+    const IMAGE_COL_WIDTH = 14 * 7;
+    const IMAGE_ROW_HEIGHT = 63;
+    const IMAGE_PADDING = 8;
+    const MAX_IMG_WIDTH = IMAGE_COL_WIDTH - IMAGE_PADDING * 2;
+    const MAX_IMG_HEIGHT = IMAGE_ROW_HEIGHT - IMAGE_PADDING * 2;
+
+    const urlsToFetch = products
+      .map((p, i) => ({ url: p.imagen_url, index: i }))
+      .filter((item) => item.url && item.url.startsWith("https"));
+
+    console.log(`🖼️ Descargando ${urlsToFetch.length} imágenes desde servidor...`);
+    const imageResults = await Promise.allSettled(
+      urlsToFetch.map(async (item) => {
+        const result = await fetchImageServer(item.url!);
+        return { index: item.index, result };
+      })
+    );
+
+    const imageMap = new Map<number, { id: number; width: number; height: number }>();
+    for (const settled of imageResults) {
+      if (settled.status !== "fulfilled") continue;
+      const { index, result } = settled.value;
+      if (!result) continue;
+      const imgType = getExcelImageType(result.type);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const imageId = workbook.addImage({
+        buffer: result.buffer as any,
+        extension: imgType,
+      });
+      imageMap.set(index, { id: imageId, width: MAX_IMG_WIDTH, height: MAX_IMG_HEIGHT });
+    }
+
+    products.forEach((product, idx) => {
+      const discountValues: (number | null)[] = [10, 20, 30, 40, 50, 60, 70].map((pct) =>
+        product.descuento === pct ? product.precio_final : null
+      );
+
+      const row = sheet.addRow([
+        "", product.cod_universal, product.marca, product.modelo,
+        product.genero, product.categoria, product.color,
+        product.stock_total, product.precio_final, ...discountValues,
+      ]);
+      row.height = IMAGE_ROW_HEIGHT;
+      row.alignment = { vertical: "middle" };
+
+      const imageData = imageMap.get(idx);
+      if (imageData) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sheet.addImage(imageData.id, {
+          tl: { col: 0.05, row: (idx + 1) + 0.05 } as any,
+          br: { col: 0.98, row: (idx + 2) - 0.05 } as any,
+          editAs: "twoCell",
+        });
+      }
+
+      row.eachCell((cell, colNumber) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE5E7EB" } },
+          bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFE5E7EB" } },
+          right: { style: "thin", color: { argb: "FFE5E7EB" } },
+        };
+        if (colNumber >= 10) {
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          if (cell.value !== null && cell.value !== undefined) {
+            cell.numFmt = "#,##0.00";
+            const pct = DISCOUNT_ORDER[colNumber - 10];
+            const color = DISCOUNT_COLORS[pct];
+            if (color) {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.excel } };
+              cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
+            }
+          }
+        }
+        if (colNumber === 8 || colNumber === 9) {
+          cell.numFmt = "#,##0.00";
+          cell.alignment = { vertical: "middle", horizontal: "right" };
+        }
+      });
+
+      if (idx % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } };
+        });
+      }
+    });
+
+    sheet.getColumn(1).width = 14;
+    sheet.getColumn(2).width = 18;
+    sheet.getColumn(3).width = 16;
+    sheet.getColumn(4).width = 18;
+    sheet.getColumn(5).width = 14;
+    sheet.getColumn(6).width = 16;
+    sheet.getColumn(7).width = 14;
+    sheet.getColumn(8).width = 10;
+    sheet.getColumn(9).width = 14;
+    sheet.getColumn(10).width = 12;
+    sheet.getColumn(11).width = 12;
+    sheet.getColumn(12).width = 12;
+    sheet.getColumn(13).width = 12;
+    sheet.getColumn(14).width = 12;
+    sheet.getColumn(15).width = 12;
+    sheet.getColumn(16).width = 12;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+
+    return { success: true, buffer: base64, msg: "Excel generado." };
   } catch (error: any) {
     return { success: false, msg: `Error: ${error.message}` };
   }

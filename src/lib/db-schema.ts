@@ -39,6 +39,12 @@ export async function initDatabase() {
       clave TEXT PRIMARY KEY,
       valor TEXT
     );`,
+    `CREATE TABLE IF NOT EXISTS producto_imagenes (
+      cod_universal TEXT PRIMARY KEY,
+      imagen_url TEXT NOT NULL,
+      source TEXT NOT NULL CHECK(source IN ('archivo', 'sistema')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );`,
   ], "write");
 }
 

@@ -6,13 +6,14 @@ import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowMo
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Search, Upload, ArrowUpDown, Download, Package, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Upload, ArrowUpDown, Download, Package, X, Camera, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { UploadModal } from "./upload-modal";
-import { exportToExcel } from "@/lib/export-to-excel";
 import { MultiFilter } from "@/components/multi-filter";
 import { getDiscountColor } from "@/lib/discount-colors";
+import { setProductoImagen, removeProductoImagen, exportCatalogoExcel } from "@/app/admin/actions";
 import type { ExportProduct } from "@/types";
 
 interface ProductoAdmin {
@@ -55,6 +56,47 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [savingImage, setSavingImage] = useState(false);
+
+  const handleSaveImage = async () => {
+    if (!editingImage || !imageUrlInput.trim()) return;
+    if (!imageUrlInput.startsWith("https://")) {
+      toast.error("La URL debe ser HTTPS.");
+      return;
+    }
+    setSavingImage(true);
+    try {
+      const result = await setProductoImagen(editingImage, imageUrlInput.trim());
+      if (result.success) {
+        toast.success(result.msg);
+        setEditingImage(null);
+        setImageUrlInput("");
+        window.location.reload();
+      } else {
+        toast.error(result.msg);
+      }
+    } catch {
+      toast.error("Error al guardar imagen.");
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
+  const handleRemoveImage = async (cod_universal: string) => {
+    try {
+      const result = await removeProductoImagen(cod_universal);
+      if (result.success) {
+        toast.success(result.msg);
+        window.location.reload();
+      } else {
+        toast.error(result.msg);
+      }
+    } catch {
+      toast.error("Error al eliminar imagen.");
+    }
+  };
 
   const filteredData = useMemo(() => {
     let result = [...data];
@@ -95,14 +137,19 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
               className="w-10 h-10 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all"
               onClick={(e) => {
                 e.stopPropagation();
-                if (validUrl && url) setPreviewImage(url);
+                if (validUrl && url) {
+                  setPreviewImage(url);
+                } else {
+                  setEditingImage(row.original.cod_universal);
+                  setImageUrlInput("");
+                }
               }}
             >
               {validUrl ? (
                 <Image src={url} alt={row.original.modelo} fill className="object-cover" loading="lazy" sizes="40px" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0]">
-                  <Package className="h-4 w-4 text-[#9297a0]" />
+                <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]">
+                  <Camera className="h-4 w-4 text-[#9297a0]" />
                 </div>
               )}
             </div>
@@ -202,7 +249,22 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
             try {
               const rows = table.getFilteredRowModel().rows;
               const allData: ExportProduct[] = rows.map((r) => r.original as ExportProduct);
-              await exportToExcel(allData);
+              const result = await exportCatalogoExcel(allData);
+              if (result.success && result.buffer) {
+                const binary = atob(result.buffer);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "catalogo_productos.xlsx";
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Excel exportado.");
+              } else {
+                toast.error(result.msg);
+              }
             } finally {
               setExporting(false);
             }
@@ -273,6 +335,44 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
       </div>
 
       <UploadModal open={showUploadModal} onOpenChange={setShowUploadModal} />
+
+      <Dialog open={!!editingImage} onOpenChange={() => setEditingImage(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Agregar imagen</DialogTitle>
+            <DialogDescription>
+              Código: <span className="font-mono">{editingImage}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="https://ejemplo.com/imagen.jpg"
+              value={imageUrlInput}
+              onChange={(e) => setImageUrlInput(e.target.value)}
+              className="border-[#dddddd]"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setEditingImage(null)}
+                className="border-[#dddddd]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveImage}
+                disabled={savingImage || !imageUrlInput.trim()}
+                className="bg-[#1b61c9] hover:bg-[#1a3866] text-white"
+              >
+                {savingImage ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
