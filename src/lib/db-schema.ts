@@ -45,6 +45,17 @@ export async function initDatabase() {
       source TEXT NOT NULL CHECK(source IN ('archivo', 'sistema')),
       updated_at TEXT DEFAULT (datetime('now'))
     );`,
+    `CREATE TABLE IF NOT EXISTS descuento_updates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cod_universal TEXT NOT NULL,
+      genero TEXT NOT NULL,
+      bf_descuento REAL NOT NULL,
+      af_descuento REAL NOT NULL,
+      just_updated TEXT NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS remove_discount (
+      cod_universal TEXT PRIMARY KEY
+    );`,
   ], "write");
 }
 

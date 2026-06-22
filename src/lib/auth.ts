@@ -3,8 +3,12 @@ import bcryptjs from "bcryptjs";
 import { turso } from "./turso";
 
 const SECRET = new TextEncoder().encode(
-  process.env.BETTER_AUTH_SECRET || "default-secret-change-me"
+  process.env.BETTER_AUTH_SECRET
 );
+
+if (!SECRET || SECRET.length === 0) {
+  throw new Error("BETTER_AUTH_SECRET is required. Set it in .env.local");
+}
 
 export interface SessionUser {
   id: string;

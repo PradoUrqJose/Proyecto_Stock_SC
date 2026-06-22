@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, flexRender, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ function formatPrice(value: number): string {
 }
 
 export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: ProductsTableProps) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [filterCategoria, setFilterCategoria] = useState<string[]>([]);
@@ -73,7 +75,7 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
         toast.success(result.msg);
         setEditingImage(null);
         setImageUrlInput("");
-        window.location.reload();
+        router.refresh();
       } else {
         toast.error(result.msg);
       }
@@ -89,7 +91,7 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
       const result = await removeProductoImagen(cod_universal);
       if (result.success) {
         toast.success(result.msg);
-        window.location.reload();
+        router.refresh();
       } else {
         toast.error(result.msg);
       }

@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   RefreshCcw,
+  Percent,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ interface SidebarProps {
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/productos", label: "Productos", icon: Package },
+  { href: "/admin/actualizacion", label: "Actualización", icon: Percent },
   { href: "/admin/reposicion", label: "Reposición", icon: RefreshCcw },
 ];
 

@@ -148,7 +148,7 @@ export default function LoginPage() {
                 )}
               </Button>
               <p className="text-xs text-[#41454d] text-center">
-                Admin: admin@merch.com / admin123
+                Contacta al administrador para obtener acceso.
               </p>
             </form>
           ) : (

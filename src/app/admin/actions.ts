@@ -10,8 +10,6 @@ import type { InValue } from "@libsql/core/api";
 
 export async function uploadStock(formData: FormData): Promise<PipelineResult> {
   try {
-    console.log("⚡ [INICIO] Pipeline Atómico - Velocidad Nativa");
-
     const session = await getSession();
     if (!session || session.role !== "admin") {
       return { success: false, msg: "No autorizado." };
@@ -120,7 +118,6 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
       }
     }
 
-    console.log("🧹 Ejecutando esquema DDL limpio...");
     await turso.batch([
       "PRAGMA foreign_keys = OFF;",
       "DROP TABLE IF EXISTS variantes;",
@@ -139,18 +136,15 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
       "CREATE TABLE metadata (clave TEXT PRIMARY KEY, valor TEXT);",
     ], "write");
 
-    console.log(`📤 Enviando ${productosMap.size} productos...`);
     const opsProductos = Array.from(productosMap.values());
     for (let i = 0; i < opsProductos.length; i += 2000) {
       await turso.batch(opsProductos.slice(i, i + 2000), "write");
     }
 
-    console.log(`📤 Enviando ${variantesParaInsertar.length} variantes...`);
     for (let i = 0; i < variantesParaInsertar.length; i += 2000) {
       await turso.batch(variantesParaInsertar.slice(i, i + 2000), "write");
     }
 
-    console.log("⚡ Creando índices y guardando metadata...");
     await turso.batch([
       { sql: "CREATE INDEX idx_variantes_lookup ON variantes (cod_universal, genero);", args: [] as InValue[] },
       { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["total_productos", productosMap.size.toString()] },
@@ -166,7 +160,6 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
       WHERE imagen_url IS NOT NULL AND imagen_url NOT LIKE 'https://%'
     `);
 
-    console.log("🖼️ Poblando producto_imagenes con imágenes del HTML...");
     await turso.execute(`CREATE TABLE IF NOT EXISTS producto_imagenes (
       cod_universal TEXT PRIMARY KEY,
       imagen_url TEXT NOT NULL,
@@ -194,7 +187,6 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
     return { success: true, msg: `🎉 Éxito. ${productosMap.size} artículos indexados a velocidad nativa.` };
 
   } catch (error: any) {
-    console.error(error);
     return { success: false, msg: `❌ Fallo crítico: ${error.message}` };
   }
 }
@@ -331,6 +323,9 @@ export async function aplicarReposicion(codigos: string[]): Promise<PipelineResu
 
 export async function isReposicionActiva(): Promise<boolean> {
   try {
+    const session = await getSession();
+    if (!session) return false;
+
     const result = await turso.execute({
       sql: "SELECT valor FROM metadata WHERE clave = ?",
       args: ["reposicion_activa"],
@@ -524,7 +519,7 @@ export async function exportCatalogoExcel(
 ): Promise<{ success: boolean; buffer?: string; msg: string }> {
   try {
     const session = await getSession();
-    if (!session) {
+    if (!session || session.role !== "admin") {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -566,7 +561,6 @@ export async function exportCatalogoExcel(
       .map((p, i) => ({ url: p.imagen_url, index: i }))
       .filter((item) => item.url && item.url.startsWith("https"));
 
-    console.log(`🖼️ Descargando ${urlsToFetch.length} imágenes desde servidor...`);
     const imageResults = await Promise.allSettled(
       urlsToFetch.map(async (item) => {
         const result = await fetchImageServer(item.url!);
@@ -664,6 +658,76 @@ export async function exportCatalogoExcel(
     const base64 = Buffer.from(buffer).toString("base64");
 
     return { success: true, buffer: base64, msg: "Excel generado." };
+  } catch (error: any) {
+    return { success: false, msg: `Error: ${error.message}` };
+  }
+}
+
+interface DescuentoUpdate {
+  cod_universal: string;
+  genero: string;
+  bf_descuento: number;
+  af_descuento: number;
+}
+
+export async function guardarDescuentos(
+  updates: DescuentoUpdate[]
+): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    if (updates.length === 0) {
+      return { success: false, msg: "No hay descuentos para guardar." };
+    }
+
+    const fecha = new Date().toLocaleString("es-PE");
+
+    await turso.execute(`CREATE TABLE IF NOT EXISTS descuento_updates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cod_universal TEXT NOT NULL,
+      genero TEXT NOT NULL,
+      bf_descuento REAL NOT NULL,
+      af_descuento REAL NOT NULL,
+      just_updated TEXT NOT NULL
+    )`);
+
+    const updateOps = updates.map((u) => ({
+      sql: `UPDATE productos 
+            SET descuento = ?, precio_final = precio_lista * (1 - ? / 100.0) 
+            WHERE cod_universal = ? AND genero = ?`,
+      args: [u.af_descuento, u.af_descuento, u.cod_universal, u.genero] as InValue[],
+    }));
+
+    for (let i = 0; i < updateOps.length; i += 2000) {
+      await turso.batch(updateOps.slice(i, i + 2000), "write");
+    }
+
+    const auditOps = updates.map((u) => ({
+      sql: `DELETE FROM descuento_updates WHERE cod_universal = ? AND genero = ?`,
+      args: [u.cod_universal, u.genero] as InValue[],
+    }));
+    for (let i = 0; i < auditOps.length; i += 2000) {
+      await turso.batch(auditOps.slice(i, i + 2000), "write");
+    }
+
+    const auditInserts = updates.map((u) => ({
+      sql: `INSERT INTO descuento_updates (cod_universal, genero, bf_descuento, af_descuento, just_updated)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: [u.cod_universal, u.genero, u.bf_descuento, u.af_descuento, fecha] as InValue[],
+    }));
+
+    for (let i = 0; i < auditInserts.length; i += 2000) {
+      await turso.batch(auditInserts.slice(i, i + 2000), "write");
+    }
+
+    revalidatePath("/admin/actualizacion");
+    revalidatePath("/admin/productos");
+    revalidatePath("/client");
+
+    return { success: true, msg: `${updates.length} descuentos actualizados.` };
   } catch (error: any) {
     return { success: false, msg: `Error: ${error.message}` };
   }

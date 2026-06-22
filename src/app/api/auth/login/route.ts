@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticate, getUserByEmail, createUser } from "@/lib/auth";
+import { authenticate } from "@/lib/auth";
 import { initDatabase } from "@/lib/db-schema";
 
 export async function POST(request: Request) {
@@ -13,12 +13,6 @@ export async function POST(request: Request) {
         { error: "Email y contrasena son requeridos" },
         { status: 400 }
       );
-    }
-
-    // Auto-create admin if first user
-    const existingUser = await getUserByEmail(email);
-    if (!existingUser && email === "admin@merch.com") {
-      await createUser(email, password, "Administrador", "admin");
     }
 
     const result = await authenticate(email, password);

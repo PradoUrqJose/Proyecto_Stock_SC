@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes
@@ -28,8 +28,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/client", request.url));
   }
 
-  // Client routes protection
-  if (pathname.startsWith("/client") && !user.role) {
+  // Client routes protection - any authenticated user can access /client
+  if (pathname.startsWith("/client") && user.role !== "admin" && user.role !== "client") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
