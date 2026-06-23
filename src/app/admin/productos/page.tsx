@@ -1,5 +1,10 @@
 import { turso } from "@/lib/turso";
 import { ProductsTable } from "@/components/admin/products-table";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Productos",
+};
 
 export default async function AdminProductosPage() {
   const result = await turso.execute(

@@ -1,5 +1,10 @@
 import { turso } from "@/lib/turso";
 import { RepositionClientTable } from "@/components/client/reposicion-client-table";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Reposición",
+};
 
 export default async function ClientReposicionPage() {
   const activaResult = await turso.execute({

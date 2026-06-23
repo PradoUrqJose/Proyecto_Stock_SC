@@ -1,4 +1,5 @@
 import { turso } from "./turso";
+import { hashPassword } from "./auth";
 
 export async function initDatabase() {
   await turso.batch([
@@ -57,6 +58,23 @@ export async function initDatabase() {
       cod_universal TEXT PRIMARY KEY
     );`,
   ], "write");
+
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@merch.com";
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+
+  const existing = await turso.execute({
+    sql: "SELECT id FROM users WHERE email = ?",
+    args: [adminEmail],
+  });
+
+  if (existing.rows.length === 0) {
+    const id = crypto.randomUUID();
+    const hashed = await hashPassword(adminPassword);
+    await turso.execute({
+      sql: "INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)",
+      args: [id, adminEmail, hashed, "Administrador", "admin"],
+    });
+  }
 }
 
 export async function destroyDatabase() {

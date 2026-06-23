@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { authenticate } from "@/lib/auth";
 import { initDatabase } from "@/lib/db-schema";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const forwarded = request.headers.get("x-forwarded-for");
+    const ip = forwarded?.split(",")[0] || "unknown";
+
+    if (!checkRateLimit(`login:${ip}`, 5, 60000)) {
+      return NextResponse.json(
+        { error: "Demasiados intentos. Intenta de nuevo en 1 minuto." },
+        { status: 429 }
+      );
+    }
+
     await initDatabase();
 
-    const { email, password, name } = await request.json();
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(

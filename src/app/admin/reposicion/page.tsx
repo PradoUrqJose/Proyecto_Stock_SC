@@ -1,4 +1,9 @@
 import { ReposicionTable } from "@/components/admin/reposicion-table";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Reposición",
+};
 
 export default async function AdminReposicionPage() {
   return (

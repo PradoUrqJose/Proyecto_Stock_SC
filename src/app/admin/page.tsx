@@ -1,5 +1,10 @@
 import { turso } from "@/lib/turso";
 import { DashboardCards } from "@/components/admin/dashboard-cards";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default async function AdminDashboardPage() {
   const [totalProducts, stockByMarca, valorInventario, totalVariantes, descuentoDist] =

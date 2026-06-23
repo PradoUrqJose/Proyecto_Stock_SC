@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { getUserByEmail, createUser } from "@/lib/auth";
 import { initDatabase } from "@/lib/db-schema";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    const forwarded = request.headers.get("x-forwarded-for");
+    const ip = forwarded?.split(",")[0] || "unknown";
+
+    if (!checkRateLimit(`register:${ip}`, 3, 60000)) {
+      return NextResponse.json(
+        { error: "Demasiados registros. Intenta de nuevo en 1 minuto." },
+        { status: 429 }
+      );
+    }
+
     await initDatabase();
 
     const { email, password, name } = await request.json();

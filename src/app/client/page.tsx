@@ -1,5 +1,10 @@
 import { turso } from "@/lib/turso";
 import { ClientTable } from "@/components/client/client-table";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Catálogo",
+};
 
 export default async function ClientPage() {
   const result = await turso.execute(

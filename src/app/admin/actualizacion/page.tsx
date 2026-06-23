@@ -1,5 +1,10 @@
 import { turso } from "@/lib/turso";
 import { ActualizacionTable } from "@/components/admin/actualizacion-table";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Actualización de Descuentos",
+};
 
 export default async function AdminActualizacionPage() {
   const result = await turso.execute(

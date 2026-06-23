@@ -15,7 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mercaderia Query",
+  title: {
+    default: "Mercaderia Query",
+    template: "%s | Mercaderia Query",
+  },
   description: "Sistema de consulta de mercaderia",
 };
 
