@@ -5,7 +5,7 @@ import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import * as XLSX from "xlsx";
 import * as cheerio from "cheerio";
-import type { PipelineResult } from "@/types";
+import type { PipelineResult, Producto, Variante } from "@/types";
 import type { InValue } from "@libsql/core/api";
 
 export async function uploadStock(formData: FormData): Promise<PipelineResult> {
@@ -188,6 +188,165 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
 
   } catch (error: any) {
     return { success: false, msg: `❌ Fallo crítico: ${error.message}` };
+  }
+}
+
+// ========== Batch upload helpers ==========
+
+export async function initUpload(): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    await turso.batch([
+      "PRAGMA foreign_keys = OFF;",
+      "DROP TABLE IF EXISTS variantes;",
+      "DROP TABLE IF EXISTS productos;",
+      "DROP TABLE IF EXISTS metadata;",
+      "PRAGMA foreign_keys = ON;",
+      `CREATE TABLE productos (
+        cod_universal TEXT, genero TEXT, marca TEXT, modelo TEXT, categoria TEXT, grupo TEXT, color TEXT,
+        precio_lista REAL, descuento REAL, precio_final REAL, imagen_url TEXT, stock_total INTEGER,
+        PRIMARY KEY (cod_universal, genero)
+      );`,
+      `CREATE TABLE variantes (
+        cod_universal TEXT, genero TEXT, almacen TEXT, cod_prod TEXT, cod_barras TEXT PRIMARY KEY, talla TEXT, precio_compra REAL,
+        FOREIGN KEY (cod_universal, genero) REFERENCES productos(cod_universal, genero)
+      );`,
+      "CREATE TABLE metadata (clave TEXT PRIMARY KEY, valor TEXT);",
+    ], "write");
+
+    return { success: true, msg: "Tablas listas." };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Error desconocido";
+    return { success: false, msg: `Error al inicializar: ${msg}` };
+  }
+}
+
+export async function uploadProductosBatch(
+  productos: Producto[]
+): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    if (productos.length === 0) {
+      return { success: true, msg: "Sin productos." };
+    }
+
+    const ops = productos.map((p) => ({
+      sql: `INSERT INTO productos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        p.cod_universal, p.genero, p.marca, p.modelo, p.categoria,
+        p.grupo, p.color, p.precio_lista, p.descuento, p.precio_final,
+        p.imagen_url, p.stock_total,
+      ] as InValue[],
+    }));
+
+    await turso.batch(ops, "write");
+    return { success: true, msg: `${productos.length} productos insertados.` };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Error desconocido";
+    return { success: false, msg: `Error al insertar productos: ${msg}` };
+  }
+}
+
+export async function uploadVariantesBatch(
+  variantes: Variante[]
+): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    if (variantes.length === 0) {
+      return { success: true, msg: "Sin variantes." };
+    }
+
+    const ops = variantes.map((v) => ({
+      sql: `INSERT OR IGNORE INTO variantes VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        v.cod_universal, v.genero, v.almacen, v.cod_prod, v.cod_barras,
+        v.talla, v.precio_compra,
+      ] as InValue[],
+    }));
+
+    await turso.batch(ops, "write");
+    return { success: true, msg: `${variantes.length} variantes insertadas.` };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Error desconocido";
+    return { success: false, msg: `Error al insertar variantes: ${msg}` };
+  }
+}
+
+interface FinalizeParams {
+  total_productos: number;
+  total_variantes: number;
+  valor_inventario: number;
+  conteo_marcas: Record<string, number>;
+  conteo_descuentos: Record<string, number>;
+  imagenEntries: { cod_universal: string; imagen_url: string }[];
+}
+
+export async function finalizeUpload(
+  params: FinalizeParams
+): Promise<PipelineResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    const ultimaSync = new Date().toLocaleString("es-PE");
+
+    const metaOps: ({ sql: string; args: InValue[] })[] = [
+      { sql: "CREATE INDEX IF NOT EXISTS idx_variantes_lookup ON variantes (cod_universal, genero);", args: [] },
+      { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["total_productos", params.total_productos.toString()] },
+      { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["total_variantes", params.total_variantes.toString()] },
+      { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["valor_inventario", params.valor_inventario.toFixed(0)] },
+      { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["ultima_sync", ultimaSync] },
+      { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["grafico_marcas", JSON.stringify(params.conteo_marcas)] },
+      { sql: "INSERT INTO metadata VALUES (?, ?);", args: ["grafico_descuentos", JSON.stringify(params.conteo_descuentos)] },
+    ];
+
+    await turso.batch(metaOps, "write");
+
+    await turso.execute(`
+      UPDATE productos SET imagen_url = NULL
+      WHERE imagen_url IS NOT NULL AND imagen_url NOT LIKE 'https://%'
+    `);
+
+    await turso.execute(`CREATE TABLE IF NOT EXISTS producto_imagenes (
+      cod_universal TEXT PRIMARY KEY,
+      imagen_url TEXT NOT NULL,
+      source TEXT NOT NULL CHECK(source IN ('archivo', 'sistema')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    if (params.imagenEntries.length > 0) {
+      const inserts = params.imagenEntries.map((e) => ({
+        sql: `INSERT INTO producto_imagenes (cod_universal, imagen_url, source)
+              VALUES (?, ?, 'archivo')
+              ON CONFLICT(cod_universal) DO NOTHING`,
+        args: [e.cod_universal, e.imagen_url] as InValue[],
+      }));
+      for (let i = 0; i < inserts.length; i += 2000) {
+        await turso.batch(inserts.slice(i, i + 2000), "write");
+      }
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/client");
+
+    return { success: true, msg: "Base de datos finalizada correctamente." };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Error desconocido";
+    return { success: false, msg: `Error al finalizar: ${msg}` };
   }
 }
 
