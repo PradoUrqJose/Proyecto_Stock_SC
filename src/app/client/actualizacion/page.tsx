@@ -8,15 +8,23 @@ export const metadata: Metadata = {
 };
 
 export default async function ClientActualizacionPage() {
-  const [activaResult, session] = await Promise.all([
-    turso.execute({
-      sql: "SELECT valor FROM metadata WHERE clave = ?",
-      args: ["actualizacion_activa"],
-    }),
-    getSession(),
-  ]);
+  let activa = false;
+  let session: Awaited<ReturnType<typeof getSession>> | null = null;
 
-  const activa = activaResult.rows[0]?.valor === "true";
+  try {
+    const [activaResult, sessionResult] = await Promise.all([
+      turso.execute({
+        sql: "SELECT valor FROM metadata WHERE clave = ?",
+        args: ["actualizacion_activa"],
+      }),
+      getSession(),
+    ]);
+
+    activa = activaResult.rows[0]?.valor === "true";
+    session = sessionResult;
+  } catch {
+    // Fallback: si falla la consulta, se muestra el estado sin actualizaciones
+  }
 
   if (!activa) {
     return (

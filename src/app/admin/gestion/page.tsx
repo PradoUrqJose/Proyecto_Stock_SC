@@ -7,7 +7,16 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Gestión" };
 
 export default async function GestionPage() {
-  const [tiendas, usuarios] = await Promise.all([getTiendas(), getUsuarios()]);
+  let tiendas: Awaited<ReturnType<typeof getTiendas>> = [];
+  let usuarios: Awaited<ReturnType<typeof getUsuarios>> = [];
+
+  try {
+    const results = await Promise.allSettled([getTiendas(), getUsuarios()]);
+    if (results[0].status === "fulfilled") tiendas = results[0].value;
+    if (results[1].status === "fulfilled") usuarios = results[1].value;
+  } catch {
+    // Fallback: si falla alguna consulta, se muestra el resto con valores por defecto
+  }
 
   const cards = [
     {
