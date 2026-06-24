@@ -12,6 +12,9 @@ import {
   X,
   RefreshCcw,
   Percent,
+  Settings,
+  Store,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -27,8 +30,14 @@ const adminLinks = [
   { href: "/admin/reposicion", label: "Reposición", icon: RefreshCcw },
 ];
 
+const adminGestionLinks = [
+  { href: "/admin/gestion/tiendas", label: "Tiendas", icon: Store },
+  { href: "/admin/gestion/usuarios", label: "Usuarios", icon: Users },
+];
+
 const clientLinks = [
   { href: "/client", label: "Catalogo", icon: Search },
+  { href: "/client/actualizacion", label: "Actualización", icon: Percent },
   { href: "/client/reposicion", label: "Reposición", icon: RefreshCcw },
 ];
 
@@ -53,7 +62,7 @@ export function Sidebar({ role }: SidebarProps) {
         <p className="text-xs text-white/50 mt-0.5 capitalize">{role} Panel</p>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {links.map((link) => {
           const isActive =
             link.href === "/admin" || link.href === "/client"
@@ -76,6 +85,36 @@ export function Sidebar({ role }: SidebarProps) {
             </Link>
           );
         })}
+
+        {role === "admin" && (
+          <div className="pt-3">
+            <div className="flex items-center gap-2 px-3 pb-1.5">
+              <Settings className="h-3.5 w-3.5 text-white/30" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
+                Gestión
+              </span>
+            </div>
+            {adminGestionLinks.map((link) => {
+              const isActive = pathname.startsWith(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <link.icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       <div className="px-3 py-4 border-t border-white/10">

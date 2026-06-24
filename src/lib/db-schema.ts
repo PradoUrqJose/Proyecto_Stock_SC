@@ -3,12 +3,18 @@ import { hashPassword } from "./auth";
 
 export async function initDatabase() {
   await turso.batch([
+    `CREATE TABLE IF NOT EXISTS tiendas (
+      id TEXT PRIMARY KEY,
+      nombre TEXT UNIQUE NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );`,
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'client' CHECK(role IN ('admin', 'client')),
+      tienda_id TEXT REFERENCES tiendas(id) ON DELETE SET NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );`,
     `CREATE TABLE IF NOT EXISTS productos (
@@ -29,7 +35,8 @@ export async function initDatabase() {
     `CREATE TABLE IF NOT EXISTS variantes (
       cod_universal TEXT,
       genero TEXT,
-      almacen TEXT,
+      alm_izq TEXT,
+      alm_der TEXT,
       cod_prod TEXT,
       cod_barras TEXT PRIMARY KEY,
       talla TEXT,
@@ -58,6 +65,15 @@ export async function initDatabase() {
       cod_universal TEXT PRIMARY KEY
     );`,
   ], "write");
+
+  // Migración: agregar tienda_id a users si no existe
+  const userColumns = await turso.execute("PRAGMA table_info(users)");
+  const hasTiendaId = userColumns.rows.some((r) => r.name === "tienda_id");
+  if (!hasTiendaId) {
+    await turso.execute(
+      "ALTER TABLE users ADD COLUMN tienda_id TEXT REFERENCES tiendas(id) ON DELETE SET NULL"
+    );
+  }
 
   const adminEmail = process.env.ADMIN_EMAIL || "admin@merch.com";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
@@ -107,7 +123,8 @@ export async function createSchema() {
     `CREATE TABLE IF NOT EXISTS variantes (
       cod_universal TEXT,
       genero TEXT,
-      almacen TEXT,
+      alm_izq TEXT,
+      alm_der TEXT,
       cod_prod TEXT,
       cod_barras TEXT PRIMARY KEY,
       talla TEXT,

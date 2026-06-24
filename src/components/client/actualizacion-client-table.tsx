@@ -5,7 +5,6 @@ import Image from "next/image";
 import {
   useReactTable,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   flexRender,
   type ColumnDef,
@@ -29,10 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   ChevronLeft,
   ChevronRight,
@@ -40,10 +36,11 @@ import {
   ArrowUpDown,
   X,
   Package,
+  ArrowRight,
 } from "lucide-react";
 import { getDiscountColor } from "@/lib/discount-colors";
 
-interface ProductoReposicion {
+interface ProductoActualizacion {
   cod_universal: string;
   genero: string;
   marca: string;
@@ -58,8 +55,9 @@ interface ProductoReposicion {
   imagen_url: string | null;
 }
 
-interface RepositionClientTableProps {
-  data: ProductoReposicion[];
+interface ActualizacionClientTableProps {
+  data: ProductoActualizacion[];
+  descuentosAnteriores: Record<string, number>;
   tiendas: string[];
   tiendaStock: Record<string, number>;
   tiendaAsignada?: string | null;
@@ -73,12 +71,13 @@ function formatPrice(value: number): string {
   }).format(value);
 }
 
-export function RepositionClientTable({
+export function ActualizacionClientTable({
   data,
+  descuentosAnteriores,
   tiendas,
   tiendaStock,
   tiendaAsignada,
-}: RepositionClientTableProps) {
+}: ActualizacionClientTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [selectedTienda, setSelectedTienda] = useState<string>(tiendaAsignada ?? "all");
@@ -108,14 +107,15 @@ export function RepositionClientTable({
     return result;
   }, [data, globalFilter, selectedTienda, tiendaStock]);
 
-  const columns: ColumnDef<ProductoReposicion>[] = useMemo(
+  const columns: ColumnDef<ProductoActualizacion>[] = useMemo(
     () => [
       {
         accessorKey: "imagen_url",
         header: "Imagen",
         cell: ({ row }) => {
           const url = row.original.imagen_url;
-          const validUrl = url && (url.startsWith("http://") || url.startsWith("https://"));
+          const validUrl =
+            url && (url.startsWith("http://") || url.startsWith("https://"));
           return (
             <div
               className="w-12 h-12 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all"
@@ -125,7 +125,14 @@ export function RepositionClientTable({
               }}
             >
               {validUrl ? (
-                <Image src={url} alt={row.original.modelo} fill className="object-cover" loading="lazy" sizes="48px" />
+                <Image
+                  src={url}
+                  alt={row.original.modelo}
+                  fill
+                  className="object-cover"
+                  loading="lazy"
+                  sizes="48px"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0]">
                   <Package className="h-5 w-5 text-[#9297a0]" />
@@ -139,7 +146,9 @@ export function RepositionClientTable({
         accessorKey: "cod_universal",
         header: "Cod. Universal",
         cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.getValue("cod_universal")}</span>
+          <span className="font-mono text-xs">
+            {row.getValue("cod_universal")}
+          </span>
         ),
       },
       {
@@ -157,14 +166,39 @@ export function RepositionClientTable({
       { accessorKey: "grupo", header: "Grupo" },
       { accessorKey: "color", header: "Color" },
       {
+        id: "descuento_anterior",
+        header: "Desc. Anterior",
+        cell: ({ row }) => {
+          const key = `${row.original.cod_universal}-${row.original.genero}`;
+          const descAnt = descuentosAnteriores[key];
+          if (descAnt === undefined) return <span className="text-[#41454d]">-</span>;
+          return descAnt > 0 ? (
+            <Badge className={`${getDiscountColor(descAnt)} text-white`}>
+              {descAnt}%
+            </Badge>
+          ) : (
+            <span className="text-[#41454d]">0%</span>
+          );
+        },
+      },
+      {
+        id: "cambio",
+        header: "",
+        cell: () => (
+          <ArrowRight className="h-4 w-4 text-[#9297a0]" />
+        ),
+      },
+      {
         accessorKey: "descuento",
-        header: "Descuento",
+        header: "Desc. Actual",
         cell: ({ row }) => {
           const desc = row.getValue("descuento") as number;
-          return (
+          return desc > 0 ? (
             <Badge className={`${getDiscountColor(desc)} text-white`}>
               {desc}%
             </Badge>
+          ) : (
+            <span className="text-[#41454d]">0%</span>
           );
         },
       },
@@ -172,14 +206,18 @@ export function RepositionClientTable({
         accessorKey: "precio_lista",
         header: "P. Lista",
         cell: ({ row }) => (
-          <span className="font-medium">{formatPrice(row.getValue("precio_lista") as number)}</span>
+          <span className="font-medium">
+            {formatPrice(row.getValue("precio_lista") as number)}
+          </span>
         ),
       },
       {
         accessorKey: "precio_final",
         header: "P. Final",
         cell: ({ row }) => (
-          <span className="font-medium">{formatPrice(row.getValue("precio_final") as number)}</span>
+          <span className="font-medium">
+            {formatPrice(row.getValue("precio_final") as number)}
+          </span>
         ),
       },
       {
@@ -187,7 +225,17 @@ export function RepositionClientTable({
         header: "Stock",
         cell: ({ row }) => {
           const stock = row.getValue("stock_total") as number;
-          return <span className={stock === 0 ? "text-[#dc2626] font-medium" : "font-medium"}>{stock}</span>;
+          return (
+            <span
+              className={
+                stock === 0
+                  ? "text-[#dc2626] font-medium"
+                  : "font-medium"
+              }
+            >
+              {stock}
+            </span>
+          );
         },
       },
       ...(selectedTienda !== "all"
@@ -195,20 +243,30 @@ export function RepositionClientTable({
             {
               id: "stock_tienda",
               header: `Stock ${selectedTienda}`,
-              cell: ({ row }: { row: { original: ProductoReposicion } }) => {
+              cell: ({
+                row,
+              }: {
+                row: { original: ProductoActualizacion };
+              }) => {
                 const key = `${row.original.cod_universal}-${row.original.genero}-${selectedTienda}`;
                 const stock = tiendaStock[key] ?? 0;
                 return (
-                  <span className={stock === 0 ? "text-[#dc2626] font-medium" : "font-medium"}>
+                  <span
+                    className={
+                      stock === 0
+                        ? "text-[#dc2626] font-medium"
+                        : "font-medium"
+                    }
+                  >
                     {stock}
                   </span>
                 );
               },
-            } as ColumnDef<ProductoReposicion>,
+            } as ColumnDef<ProductoActualizacion>,
           ]
         : []),
     ],
-    [selectedTienda, tiendaStock]
+    [selectedTienda, tiendaStock, descuentosAnteriores]
   );
 
   const table = useReactTable({
@@ -234,7 +292,10 @@ export function RepositionClientTable({
           />
         </div>
         {!tiendaAsignada && (
-          <Select value={selectedTienda} onValueChange={(v) => setSelectedTienda(v ?? "all")}>
+          <Select
+            value={selectedTienda}
+            onValueChange={(v) => setSelectedTienda(v ?? "all")}
+          >
             <SelectTrigger className="w-[180px] border-[#dddddd]">
               <SelectValue placeholder="Tienda" />
             </SelectTrigger>
@@ -263,7 +324,10 @@ export function RepositionClientTable({
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <div className="flex items-center gap-1">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                         <ArrowUpDown className="h-3 w-3 opacity-50" />
                       </div>
                     </TableHead>
@@ -280,16 +344,28 @@ export function RepositionClientTable({
                     style={{ "--index": i } as React.CSSProperties}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-3 text-sm text-[#333840]">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      <TableCell
+                        key={cell.id}
+                        className="py-3 text-sm text-[#333840]"
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center text-[#41454d]">
-                    No se encontraron productos{selectedTienda !== "all" ? ` en ${selectedTienda}` : ""}
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center text-[#41454d]"
+                  >
+                    No se encontraron productos
+                    {selectedTienda !== "all"
+                      ? ` en ${selectedTienda}`
+                      : ""}
                   </TableCell>
                 </TableRow>
               )}
@@ -300,27 +376,58 @@ export function RepositionClientTable({
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#41454d]">
-          Mostrando {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} a{" "}
-          {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} de {table.getFilteredRowModel().rows.length} productos
+          Mostrando{" "}
+          {table.getState().pagination.pageIndex *
+            table.getState().pagination.pageSize +
+            1}{" "}
+          a{" "}
+          {Math.min(
+            (table.getState().pagination.pageIndex + 1) *
+              table.getState().pagination.pageSize,
+            table.getFilteredRowModel().rows.length
+          )}{" "}
+          de {table.getFilteredRowModel().rows.length} productos
         </p>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="border-[#dddddd]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="border-[#dddddd]"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm text-[#333840]">
-            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+            Página {table.getState().pagination.pageIndex + 1} de{" "}
+            {table.getPageCount()}
           </span>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="border-[#dddddd]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="border-[#dddddd]"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+      <Dialog
+        open={!!previewImage}
+        onOpenChange={() => setPreviewImage(null)}
+      >
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
           <div className="relative aspect-square w-full bg-[#f8fafc]">
             {previewImage && (
-              <Image src={previewImage} alt="Preview" fill className="object-contain" sizes="(max-width: 600px) 100vw, 600px" />
+              <Image
+                src={previewImage}
+                alt="Preview"
+                fill
+                className="object-contain"
+                sizes="(max-width: 600px) 100vw, 600px"
+              />
             )}
             <button
               onClick={() => setPreviewImage(null)}

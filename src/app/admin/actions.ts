@@ -67,17 +67,18 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
     for (const fila of filas as any[]) {
       const codUniversal = fila['COD.UNIV.']?.toString().trim();
       const genero = fila['GENERO']?.toString().trim();
-      const almacen = fila['IZQ']?.toString().trim();
+      const alm_izq = fila['IZQ']?.toString().trim();
+      const alm_der = fila['DER']?.toString().trim() || null;
 
-      if (!codUniversal || !ALMACENES_VALIDOS.has(almacen)) continue;
+      if (!codUniversal || !ALMACENES_VALIDOS.has(alm_izq)) continue;
 
       const key = `${codUniversal}-${genero}`;
       stockMap[key] = (stockMap[key] || 0) + 1;
 
       variantesParaInsertar.push({
-        sql: `INSERT OR IGNORE INTO variantes VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT OR IGNORE INTO variantes VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
-          codUniversal, genero, almacen,
+          codUniversal, genero, alm_izq, alm_der,
           fila['COD.PROD']?.toString() || "", fila['COD.BARRAS']?.toString().trim(),
           fila['TALLA']?.toString().trim() || "ÚNICA", Number(fila['COMPRA']) || 0,
         ],
@@ -88,9 +89,9 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
     for (const fila of filas as any[]) {
       const codUniversal = fila['COD.UNIV.']?.toString().trim();
       const genero = fila['GENERO']?.toString().trim();
-      const almacen = fila['IZQ']?.toString().trim();
+      const alm_izq = fila['IZQ']?.toString().trim();
 
-      if (!codUniversal || !ALMACENES_VALIDOS.has(almacen)) continue;
+      if (!codUniversal || !ALMACENES_VALIDOS.has(alm_izq)) continue;
 
       const llaveProducto = `${codUniversal}-${genero}`;
       const descPorcentaje = dictDescuentos[codUniversal] || 0;
@@ -122,18 +123,18 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
       "PRAGMA foreign_keys = OFF;",
       "DROP TABLE IF EXISTS variantes;",
       "DROP TABLE IF EXISTS productos;",
-      "DROP TABLE IF EXISTS metadata;",
       "PRAGMA foreign_keys = ON;",
+      "CREATE TABLE IF NOT EXISTS metadata (clave TEXT PRIMARY KEY, valor TEXT);",
+      "DELETE FROM metadata WHERE clave IN ('total_productos','total_variantes','valor_inventario','ultima_sync','grafico_marcas','grafico_descuentos');",
       `CREATE TABLE productos (
         cod_universal TEXT, genero TEXT, marca TEXT, modelo TEXT, categoria TEXT, grupo TEXT, color TEXT,
         precio_lista REAL, descuento REAL, precio_final REAL, imagen_url TEXT, stock_total INTEGER,
         PRIMARY KEY (cod_universal, genero)
       );`,
       `CREATE TABLE variantes (
-        cod_universal TEXT, genero TEXT, almacen TEXT, cod_prod TEXT, cod_barras TEXT PRIMARY KEY, talla TEXT, precio_compra REAL,
+        cod_universal TEXT, genero TEXT, alm_izq TEXT, alm_der TEXT, cod_prod TEXT, cod_barras TEXT PRIMARY KEY, talla TEXT, precio_compra REAL,
         FOREIGN KEY (cod_universal, genero) REFERENCES productos(cod_universal, genero)
       );`,
-      "CREATE TABLE metadata (clave TEXT PRIMARY KEY, valor TEXT);",
     ], "write");
 
     const opsProductos = Array.from(productosMap.values());
@@ -204,18 +205,18 @@ export async function initUpload(): Promise<PipelineResult> {
       "PRAGMA foreign_keys = OFF;",
       "DROP TABLE IF EXISTS variantes;",
       "DROP TABLE IF EXISTS productos;",
-      "DROP TABLE IF EXISTS metadata;",
       "PRAGMA foreign_keys = ON;",
+      "CREATE TABLE IF NOT EXISTS metadata (clave TEXT PRIMARY KEY, valor TEXT);",
+      "DELETE FROM metadata WHERE clave IN ('total_productos','total_variantes','valor_inventario','ultima_sync','grafico_marcas','grafico_descuentos');",
       `CREATE TABLE productos (
         cod_universal TEXT, genero TEXT, marca TEXT, modelo TEXT, categoria TEXT, grupo TEXT, color TEXT,
         precio_lista REAL, descuento REAL, precio_final REAL, imagen_url TEXT, stock_total INTEGER,
         PRIMARY KEY (cod_universal, genero)
       );`,
       `CREATE TABLE variantes (
-        cod_universal TEXT, genero TEXT, almacen TEXT, cod_prod TEXT, cod_barras TEXT PRIMARY KEY, talla TEXT, precio_compra REAL,
+        cod_universal TEXT, genero TEXT, alm_izq TEXT, alm_der TEXT, cod_prod TEXT, cod_barras TEXT PRIMARY KEY, talla TEXT, precio_compra REAL,
         FOREIGN KEY (cod_universal, genero) REFERENCES productos(cod_universal, genero)
       );`,
-      "CREATE TABLE metadata (clave TEXT PRIMARY KEY, valor TEXT);",
     ], "write");
 
     return { success: true, msg: "Tablas listas." };
@@ -269,10 +270,10 @@ export async function uploadVariantesBatch(
     }
 
     const ops = variantes.map((v) => ({
-      sql: `INSERT OR IGNORE INTO variantes VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT OR IGNORE INTO variantes VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
-        v.cod_universal, v.genero, v.almacen, v.cod_prod, v.cod_barras,
-        v.talla, v.precio_compra,
+        v.cod_universal, v.genero, v.alm_izq, v.alm_der ?? null,
+        v.cod_prod, v.cod_barras, v.talla, v.precio_compra,
       ] as InValue[],
     }));
 
@@ -882,9 +883,15 @@ export async function guardarDescuentos(
       await turso.batch(auditInserts.slice(i, i + 2000), "write");
     }
 
+    await turso.execute({
+      sql: "INSERT OR REPLACE INTO metadata VALUES (?, ?)",
+      args: ["actualizacion_activa", "true"],
+    });
+
     revalidatePath("/admin/actualizacion");
     revalidatePath("/admin/productos");
     revalidatePath("/client");
+    revalidatePath("/client/actualizacion");
 
     return { success: true, msg: `${updates.length} descuentos actualizados.` };
   } catch (error: any) {

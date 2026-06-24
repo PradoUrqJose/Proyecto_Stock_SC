@@ -15,6 +15,8 @@ export interface SessionUser {
   email: string;
   name: string;
   role: "admin" | "client";
+  tienda_id: string | null;
+  tienda_nombre: string | null;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -59,15 +61,16 @@ export async function createUser(
   email: string,
   password: string,
   name: string,
-  role: "admin" | "client" = "client"
+  role: "admin" | "client" = "client",
+  tienda_id: string | null = null
 ) {
   const id = crypto.randomUUID();
   const hashedPassword = await hashPassword(password);
   await turso.execute({
-    sql: "INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)",
-    args: [id, email, hashedPassword, name, role],
+    sql: "INSERT INTO users (id, email, password, name, role, tienda_id) VALUES (?, ?, ?, ?, ?, ?)",
+    args: [id, email, hashedPassword, name, role, tienda_id],
   });
-  return { id, email, name, role };
+  return { id, email, name, role, tienda_id };
 }
 
 export async function authenticate(
@@ -80,11 +83,23 @@ export async function authenticate(
   const valid = await verifyPassword(password, user.password as string);
   if (!valid) return null;
 
+  // Resolve tienda nombre if tienda_id is set
+  let tienda_nombre: string | null = null;
+  if (user.tienda_id) {
+    const tiendaResult = await turso.execute({
+      sql: "SELECT nombre FROM tiendas WHERE id = ?",
+      args: [user.tienda_id as string],
+    });
+    tienda_nombre = (tiendaResult.rows[0]?.nombre as string) ?? null;
+  }
+
   const sessionUser: SessionUser = {
     id: user.id as string,
     email: user.email as string,
     name: user.name as string,
     role: user.role as "admin" | "client",
+    tienda_id: (user.tienda_id as string) ?? null,
+    tienda_nombre,
   };
 
   const token = await createToken(sessionUser);

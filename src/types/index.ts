@@ -28,7 +28,8 @@ export interface ProductoAdmin {
 export interface Variante {
   cod_universal: string;
   genero: string;
-  almacen: string;
+  alm_izq: string;
+  alm_der: string | null;
   cod_prod: string;
   cod_barras: string;
   talla: string;
@@ -40,11 +41,20 @@ export interface Metadata {
   valor: string;
 }
 
+export interface Tienda {
+  id: string;
+  nombre: string;
+  created_at: string;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   role: "admin" | "client";
+  tienda_id: string | null;
+  tienda_nombre: string | null;
+  created_at: string;
 }
 
 export type PipelineResult = {

@@ -23,7 +23,8 @@ export interface ParsedProducto {
 export interface ParsedVariante {
   cod_universal: string;
   genero: string;
-  almacen: string;
+  alm_izq: string;
+  alm_der: string | null;
   cod_prod: string;
   cod_barras: string;
   talla: string;
@@ -166,9 +167,10 @@ export function buildData(
   for (const row of rows) {
     const codUniversal = (row["COD.UNIV."] || "").toString().trim();
     const genero = (row["GENERO"] || "").toString().trim();
-    const almacen = (row["IZQ"] || "").toString().trim();
+    const alm_izq = (row["IZQ"] || "").toString().trim();
+    const alm_der = (row["DER"] || "").toString().trim() || null;
 
-    if (!codUniversal || !ALMACENES_VALIDOS.has(almacen)) continue;
+    if (!codUniversal || !ALMACENES_VALIDOS.has(alm_izq)) continue;
 
     const key = `${codUniversal}-${genero}`;
     stockMap.set(key, (stockMap.get(key) || 0) + 1);
@@ -176,7 +178,8 @@ export function buildData(
     variantes.push({
       cod_universal: codUniversal,
       genero,
-      almacen,
+      alm_izq,
+      alm_der,
       cod_prod: (row["COD.PROD"] || "").toString().trim(),
       cod_barras: (row["COD.BARRAS"] || "").toString().trim(),
       talla: (row["TALLA"] || "").toString().trim() || "ÚNICA",
@@ -195,9 +198,9 @@ export function buildData(
   for (const row of rows) {
     const codUniversal = (row["COD.UNIV."] || "").toString().trim();
     const genero = (row["GENERO"] || "").toString().trim();
-    const almacen = (row["IZQ"] || "").toString().trim();
+    const alm_izq = (row["IZQ"] || "").toString().trim();
 
-    if (!codUniversal || !ALMACENES_VALIDOS.has(almacen)) continue;
+    if (!codUniversal || !ALMACENES_VALIDOS.has(alm_izq)) continue;
 
     const key = `${codUniversal}-${genero}`;
     if (seen.has(key)) continue;
