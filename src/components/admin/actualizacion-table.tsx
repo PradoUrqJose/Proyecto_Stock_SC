@@ -46,12 +46,9 @@ import {
 import { toast } from "sonner";
 import { MultiFilter } from "@/components/multi-filter";
 import { getDiscountColor } from "@/lib/discount-colors";
-import {
-  guardarDescuentos,
-  setProductoImagen,
-  removeProductoImagen,
-  exportCatalogoExcel,
-} from "@/app/admin/actions";
+import { guardarDescuentos } from "@/lib/actions/discounts";
+import { setProductoImagen, removeProductoImagen } from "@/lib/actions/products";
+import { exportCatalogoExcel } from "@/lib/actions/export";
 import type { ExportProduct } from "@/types";
 
 const STORAGE_KEY = "descuentos_pendientes_actualizacion";

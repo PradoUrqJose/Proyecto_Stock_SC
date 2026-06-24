@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown, X, Package, Download } from "lucide-react";
-import { exportCatalogoExcel } from "@/app/admin/actions";
+import { exportCatalogoExcel } from "@/lib/actions/export";
 import { MultiFilter } from "@/components/multi-filter";
 import { getDiscountColor } from "@/lib/discount-colors";
 import { toast } from "sonner";

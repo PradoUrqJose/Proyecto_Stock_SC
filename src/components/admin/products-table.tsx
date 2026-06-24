@@ -14,7 +14,8 @@ import { toast } from "sonner";
 import { UploadModal } from "./upload-modal";
 import { MultiFilter } from "@/components/multi-filter";
 import { getDiscountColor } from "@/lib/discount-colors";
-import { setProductoImagen, removeProductoImagen, exportCatalogoExcel } from "@/app/admin/actions";
+import { setProductoImagen, removeProductoImagen } from "@/lib/actions/products";
+import { exportCatalogoExcel } from "@/lib/actions/export";
 import type { ExportProduct } from "@/types";
 
 interface ProductoAdmin {

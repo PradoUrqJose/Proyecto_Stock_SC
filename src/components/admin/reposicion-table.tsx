@@ -31,12 +31,13 @@ import {
 import { toast } from "sonner";
 import {
   buscarReposicion,
+  aplicarReposicion,
   publicarReposicion,
   detenerReposicion,
   isReposicionActiva,
   obtenerReposicionActual,
   type ReposicionItem,
-} from "@/app/admin/actions";
+} from "@/lib/actions/reposicion";
 import { getDiscountColor } from "@/lib/discount-colors";
 import { exportReposicionToExcel } from "@/lib/export-reposicion-excel";
 

@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { DISCOUNT_COLORS, DISCOUNT_ORDER } from "./discount-colors";
-import type { ReposicionItem } from "@/app/admin/actions";
+import type { ReposicionItem } from "@/lib/actions/reposicion";
 
 export async function exportReposicionToExcel(products: ReposicionItem[]) {
   const workbook = new ExcelJS.Workbook();

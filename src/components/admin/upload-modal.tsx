@@ -18,7 +18,7 @@ import {
   uploadProductosBatch,
   uploadVariantesBatch,
   finalizeUpload,
-} from "@/app/admin/actions";
+} from "@/lib/actions/products";
 import {
   parseStockFile,
   parseImagesFile,
