@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function isPrivateIP(hostname: string): boolean {
   return (
@@ -33,6 +34,15 @@ export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+  if (!checkRateLimit(`proxy-image:${ip}`, 60, 60000)) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." },
+      { status: 429 }
+    );
   }
 
   const url = request.nextUrl.searchParams.get("url");

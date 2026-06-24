@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import { hashPassword } from "@/lib/auth";
 import { initDatabase } from "@/lib/db-schema";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { Tienda, User } from "@/types";
 import type { ActionResult } from "@/types";
 
@@ -40,6 +42,11 @@ export async function getTiendas(): Promise<Tienda[]> {
 export async function createTienda(nombre: string): Promise<ActionResult> {
   try {
     await requireAdmin();
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`createTienda:${ip}`, 5, 60000)) {
+      return { success: false, msg: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." };
+    }
     const trimmed = nombre.trim().toUpperCase();
     if (!trimmed) return { success: false, msg: "El nombre es requerido." };
 
@@ -71,6 +78,11 @@ export async function updateTienda(
 ): Promise<ActionResult> {
   try {
     await requireAdmin();
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`updateTienda:${ip}`, 10, 60000)) {
+      return { success: false, msg: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." };
+    }
     const trimmed = nombre.trim().toUpperCase();
     if (!trimmed) return { success: false, msg: "El nombre es requerido." };
 
@@ -165,6 +177,11 @@ export async function createUsuario(data: {
 }): Promise<ActionResult> {
   try {
     await requireAdmin();
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`createUsuario:${ip}`, 5, 60000)) {
+      return { success: false, msg: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." };
+    }
 
     if (!data.name.trim() || !data.email.trim() || !data.username.trim() || !data.password) {
       return { success: false, msg: "Nombre, email, usuario y contraseña son requeridos." };
@@ -226,6 +243,11 @@ export async function updateUsuario(
 ): Promise<ActionResult> {
   try {
     const session = await requireAdmin();
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`updateUsuario:${ip}`, 10, 60000)) {
+      return { success: false, msg: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." };
+    }
 
     if (!data.name.trim() || !data.email.trim() || !data.username.trim()) {
       return { success: false, msg: "Nombre, email y usuario son requeridos." };

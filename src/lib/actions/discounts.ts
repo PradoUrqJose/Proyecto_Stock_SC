@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types";
 import type { InValue } from "@libsql/core/api";
 
@@ -20,6 +22,12 @@ export async function guardarDescuentos(
     const session = await getSession();
     if (!session || session.role !== "admin") {
       return { success: false, msg: "No autorizado." };
+    }
+
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`guardarDescuentos:${ip}`, 10, 60000)) {
+      return { success: false, msg: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." };
     }
 
     if (updates.length === 0) {

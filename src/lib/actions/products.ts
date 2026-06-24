@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import * as XLSX from "xlsx";
 import * as cheerio from "cheerio";
 import type { ActionResult, Producto, Variante, VarianteRow } from "@/types";
@@ -51,6 +53,12 @@ export async function uploadStock(formData: FormData): Promise<ActionResult> {
     const session = await getSession();
     if (!session || session.role !== "admin") {
       return { success: false, msg: "No autorizado." };
+    }
+
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`upload:${ip}`, 3, 60000)) {
+      return { success: false, msg: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto." };
     }
 
     const archivoStock = formData.get("stock") as File | null;
