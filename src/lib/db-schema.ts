@@ -1,6 +1,7 @@
 import { turso } from "./turso";
 import { hashPassword } from "./auth";
 
+// ── Schema ─────────────────────────────────────────────────
 export async function initDatabase() {
   await turso.batch([
     `CREATE TABLE IF NOT EXISTS tiendas (
@@ -67,6 +68,7 @@ export async function initDatabase() {
     );`,
   ], "write");
 
+// ── Migrations ─────────────────────────────────────────────
   // Migración: agregar tienda_id a users si no existe
   const userColumns = await turso.execute("PRAGMA table_info(users)");
   const hasTiendaId = userColumns.rows.some((r) => r.name === "tienda_id");
@@ -102,6 +104,7 @@ export async function initDatabase() {
     }
   }
 
+// ── Seed ───────────────────────────────────────────────────
   const adminUsername = process.env.ADMIN_USERNAME || "admin";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
 
@@ -118,49 +121,4 @@ export async function initDatabase() {
       args: [id, `${adminUsername}@admin.local`, adminUsername, hashed, "Administrador", "admin"],
     });
   }
-}
-
-export async function destroyDatabase() {
-  await turso.batch([
-    "PRAGMA foreign_keys = OFF;",
-    "DROP TABLE IF EXISTS variantes;",
-    "DROP TABLE IF EXISTS productos;",
-    "DROP TABLE IF EXISTS metadata;",
-    "PRAGMA foreign_keys = ON;",
-  ], "write");
-}
-
-export async function createSchema() {
-  await turso.batch([
-    `CREATE TABLE IF NOT EXISTS productos (
-      cod_universal TEXT,
-      genero TEXT,
-      marca TEXT,
-      modelo TEXT,
-      categoria TEXT,
-      grupo TEXT,
-      color TEXT,
-      precio_lista REAL,
-      descuento REAL,
-      precio_final REAL,
-      imagen_url TEXT,
-      stock_total INTEGER,
-      PRIMARY KEY (cod_universal, genero)
-    );`,
-    `CREATE TABLE IF NOT EXISTS variantes (
-      cod_universal TEXT,
-      genero TEXT,
-      alm_izq TEXT,
-      alm_der TEXT,
-      cod_prod TEXT,
-      cod_barras TEXT PRIMARY KEY,
-      talla TEXT,
-      precio_compra REAL,
-      FOREIGN KEY (cod_universal, genero) REFERENCES productos(cod_universal, genero)
-    );`,
-    `CREATE TABLE IF NOT EXISTS metadata (
-      clave TEXT PRIMARY KEY,
-      valor TEXT
-    );`,
-  ], "write");
 }
