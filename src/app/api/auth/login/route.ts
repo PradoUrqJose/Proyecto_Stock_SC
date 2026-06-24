@@ -46,7 +46,9 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("Login error:", error);
+    }
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
