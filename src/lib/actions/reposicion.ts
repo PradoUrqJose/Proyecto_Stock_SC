@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
-import type { PipelineResult } from "@/types";
+import type { ActionResult } from "@/types";
 import type { InValue } from "@libsql/core/api";
 
 export interface ReposicionItem {
@@ -20,15 +20,15 @@ export interface ReposicionItem {
   stock_total: number;
 }
 
-export async function buscarReposicion(codigos: string[]): Promise<{ success: boolean; items: ReposicionItem[]; msg: string }> {
+export async function buscarReposicion(codigos: string[]): Promise<ActionResult<ReposicionItem[]>> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
-      return { success: false, items: [], msg: "No autorizado." };
+      return { success: false, data: [], msg: "No autorizado." };
     }
 
     if (codigos.length === 0) {
-      return { success: false, items: [], msg: "No se enviaron códigos." };
+      return { success: false, data: [], msg: "No se enviaron códigos." };
     }
 
     const uniqueCodigos = [...new Set(codigos.map((c) => c.trim()).filter(Boolean))];
@@ -82,14 +82,14 @@ export async function buscarReposicion(codigos: string[]): Promise<{ success: bo
       }
     }
 
-    return { success: true, items, msg: `Se encontraron ${items.length} productos con descuento para reposición.` };
+    return { success: true, data: items, msg: `Se encontraron ${items.length} productos con descuento para reposición.` };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error desconocido";
-    return { success: false, items: [], msg };
+    return { success: false, data: [], msg };
   }
 }
 
-export async function aplicarReposicion(codigos: string[]): Promise<PipelineResult> {
+export async function aplicarReposicion(codigos: string[]): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -173,7 +173,7 @@ export async function obtenerReposicionActual(): Promise<ReposicionItem[]> {
   }
 }
 
-export async function publicarReposicion(): Promise<PipelineResult> {
+export async function publicarReposicion(): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -202,7 +202,7 @@ export async function publicarReposicion(): Promise<PipelineResult> {
   }
 }
 
-export async function detenerReposicion(): Promise<PipelineResult> {
+export async function detenerReposicion(): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {

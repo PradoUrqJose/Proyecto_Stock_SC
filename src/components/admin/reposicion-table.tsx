@@ -84,8 +84,8 @@ export function ReposicionTable() {
       const result = await buscarReposicion(codigos);
 
       if (result.success) {
-        setItems(result.items);
-        setSelectedCodes(result.items.map((i) => i.cod_universal));
+        setItems(result.data ?? []);
+        setSelectedCodes((result.data ?? []).map((i) => i.cod_universal));
         setIsActive(false);
         toast.success(result.msg);
       } else {

@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/actions";
-import type { ExportProduct } from "@/types";
+import type { ActionResult, ExportProduct } from "@/types";
 
 interface UpdateRowExport {
   cod_universal: string;
@@ -38,7 +38,7 @@ function getExcelImageType(contentType: string): "png" | "jpeg" | "gif" {
 
 export async function exportCatalogoExcel(
   products: ExportProduct[]
-): Promise<{ success: boolean; buffer?: string; msg: string }> {
+): Promise<ActionResult<string>> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -179,7 +179,7 @@ export async function exportCatalogoExcel(
     const buffer = await workbook.xlsx.writeBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
 
-    return { success: true, buffer: base64, msg: "Excel generado." };
+    return { success: true, data: base64, msg: "Excel generado." };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg };
@@ -188,7 +188,7 @@ export async function exportCatalogoExcel(
 
 export async function exportUpdatesExcel(
   products: UpdateRowExport[]
-): Promise<{ success: boolean; buffer?: string; msg: string }> {
+): Promise<ActionResult<string>> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -329,7 +329,7 @@ export async function exportUpdatesExcel(
 
     const buffer = await workbook.xlsx.writeBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
-    return { success: true, buffer: base64, msg: "Excel generado." };
+    return { success: true, data: base64, msg: "Excel generado." };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg };

@@ -72,9 +72,10 @@ export interface User {
   created_at: string;
 }
 
-export type PipelineResult = {
+export type ActionResult<T = void> = {
   success: boolean;
   msg: string;
+  data?: T;
 };
 
 export interface ExportProduct {

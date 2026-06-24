@@ -5,7 +5,7 @@ import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import * as XLSX from "xlsx";
 import * as cheerio from "cheerio";
-import type { PipelineResult, Producto, Variante, VarianteRow } from "@/types";
+import type { ActionResult, Producto, Variante, VarianteRow } from "@/types";
 import type { InValue } from "@libsql/core/api";
 import { ALMACENES_VALIDOS } from "@/lib/constants";
 
@@ -46,7 +46,7 @@ interface FinalizeParams {
   imagenEntries: { cod_universal: string; imagen_url: string }[];
 }
 
-export async function uploadStock(formData: FormData): Promise<PipelineResult> {
+export async function uploadStock(formData: FormData): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -245,7 +245,7 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
 
 // ========== Batch upload helpers ==========
 
-export async function initUpload(): Promise<PipelineResult> {
+export async function initUpload(): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -279,7 +279,7 @@ export async function initUpload(): Promise<PipelineResult> {
 
 export async function uploadProductosBatch(
   productos: Producto[]
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -309,7 +309,7 @@ export async function uploadProductosBatch(
 
 export async function uploadVariantesBatch(
   variantes: Variante[]
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -338,7 +338,7 @@ export async function uploadVariantesBatch(
 
 export async function finalizeUpload(
   params: FinalizeParams
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -417,7 +417,7 @@ export async function limpiarImagenesRotas() {
 export async function setProductoImagen(
   cod_universal: string,
   imagen_url: string
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -449,7 +449,7 @@ export async function setProductoImagen(
 
 export async function removeProductoImagen(
   cod_universal: string
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -473,7 +473,7 @@ export async function removeProductoImagen(
 export async function getVariantesByProducto(
   cod_universal: string,
   genero: string
-): Promise<{ success: boolean; data?: VarianteRow[]; msg?: string }> {
+): Promise<ActionResult<VarianteRow[]>> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {
@@ -503,7 +503,7 @@ export async function getVariantesByProducto(
       precio_final: 0,
     }));
 
-    return { success: true, data };
+    return { success: true, data, msg: `${data.length} variantes encontradas.` };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg };

@@ -6,7 +6,7 @@ import { getSession } from "@/lib/actions";
 import { hashPassword } from "@/lib/auth";
 import { initDatabase } from "@/lib/db-schema";
 import type { Tienda, User } from "@/types";
-import type { PipelineResult } from "@/types";
+import type { ActionResult } from "@/types";
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -37,7 +37,7 @@ export async function getTiendas(): Promise<Tienda[]> {
   }));
 }
 
-export async function createTienda(nombre: string): Promise<PipelineResult> {
+export async function createTienda(nombre: string): Promise<ActionResult> {
   try {
     await requireAdmin();
     const trimmed = nombre.trim().toUpperCase();
@@ -68,7 +68,7 @@ export async function createTienda(nombre: string): Promise<PipelineResult> {
 export async function updateTienda(
   id: string,
   nombre: string
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     await requireAdmin();
     const trimmed = nombre.trim().toUpperCase();
@@ -96,7 +96,7 @@ export async function updateTienda(
   }
 }
 
-export async function deleteTienda(id: string): Promise<PipelineResult> {
+export async function deleteTienda(id: string): Promise<ActionResult> {
   try {
     await requireAdmin();
 
@@ -162,7 +162,7 @@ export async function createUsuario(data: {
   password: string;
   role: "admin" | "client";
   tienda_id: string | null;
-}): Promise<PipelineResult> {
+}): Promise<ActionResult> {
   try {
     await requireAdmin();
 
@@ -223,7 +223,7 @@ export async function updateUsuario(
     tienda_id: string | null;
     password?: string;
   }
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await requireAdmin();
 
@@ -276,7 +276,7 @@ export async function updateUsuario(
   }
 }
 
-export async function deleteUsuario(id: string): Promise<PipelineResult> {
+export async function deleteUsuario(id: string): Promise<ActionResult> {
   try {
     const session = await requireAdmin();
 

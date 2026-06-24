@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
-import type { PipelineResult } from "@/types";
+import type { ActionResult } from "@/types";
 import type { InValue } from "@libsql/core/api";
 
 interface DescuentoUpdate {
@@ -15,7 +15,7 @@ interface DescuentoUpdate {
 
 export async function guardarDescuentos(
   updates: DescuentoUpdate[]
-): Promise<PipelineResult> {
+): Promise<ActionResult> {
   try {
     const session = await getSession();
     if (!session || session.role !== "admin") {

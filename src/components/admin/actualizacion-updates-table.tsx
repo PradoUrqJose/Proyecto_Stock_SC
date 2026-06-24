@@ -113,8 +113,8 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
     setLoadingExcel(true);
     try {
       const result = await exportUpdatesExcel(filteredData);
-      if (result.success && result.buffer) {
-        const binary = atob(result.buffer);
+      if (result.success && result.data) {
+        const binary = atob(result.data);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
