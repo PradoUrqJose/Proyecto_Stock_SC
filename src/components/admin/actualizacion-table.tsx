@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -10,7 +10,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   flexRender,
-  type ColumnDef,
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table";
@@ -24,7 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -40,64 +38,33 @@ import {
   AlertTriangle,
   Loader2,
   X,
-  Camera,
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MultiFilter } from "@/components/multi-filter";
-import { getDiscountColor } from "@/lib/discount-colors";
-import { guardarDescuentos } from "@/lib/actions/discounts";
 import { setProductoImagen, removeProductoImagen } from "@/lib/actions/products";
-import { exportCatalogoExcel } from "@/lib/actions/export";
-import type { ExportProduct } from "@/types";
-
-const STORAGE_KEY = "descuentos_pendientes_actualizacion";
-const DESCUENTOS_OPTIONS = [10, 20, 30, 40, 50, 60, 70];
-
-interface ProductoActualizacion {
-  cod_universal: string;
-  genero: string;
-  marca: string;
-  modelo: string;
-  categoria: string;
-  grupo: string;
-  color: string;
-  descuento: number;
-  precio_lista: number;
-  precio_final: number;
-  stock_total: number;
-  imagen_url: string | null;
-}
+import { usePendingDiscounts } from "@/hooks/use-pending-discounts";
+import { useDiscountExport } from "@/hooks/use-discount-export";
+import { getColumns } from "@/components/admin/actualizacion-columns";
+import type { Producto } from "@/types";
 
 interface ActualizacionTableProps {
-  data: ProductoActualizacion[];
+  data: Producto[];
   descuentos: string[];
-}
-
-function formatPrice(value: number): string {
-  return new Intl.NumberFormat("es-PE", {
-    style: "currency",
-    currency: "PEN",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
-
-function loadPending(): Record<string, number> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function savePending(pending: Record<string, number>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(pending));
 }
 
 export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps) {
   const router = useRouter();
+  const {
+    pending,
+    pendingCount,
+    dataWithPending,
+    updatePending,
+    handleGuardar,
+  } = usePendingDiscounts(data);
+
+  const { exporting, handleExport } = useDiscountExport();
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -114,20 +81,8 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [savingImage, setSavingImage] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
-  const [pending, setPending] = useState<Record<string, number>>({});
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    setPending(loadPending());
-    setLoaded(true);
-  }, []);
-
-  const pendingCount = useMemo(
-    () => Object.keys(pending).length,
-    [pending]
-  );
+  type Row = Producto & { descuentoN: number | null };
 
   const prevFiltersRef = useRef({ globalFilter, filterCategoria, filterGrupo, filterMarca, filterDescuento, filterDescNuevo });
   useEffect(() => {
@@ -151,43 +106,12 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
     }
   }, [pendingCount, filterDescNuevo]);
 
-  const updatePending = useCallback(
-    (codKey: string, valor: number | null, originalDesc: number) => {
-      setPending((prev) => {
-        const next = { ...prev };
-        if (valor === null || valor === originalDesc) {
-          delete next[codKey];
-        } else {
-          next[codKey] = valor;
-        }
-        savePending(next);
-        return next;
-      });
-    },
-    []
-  );
-
-  const pendingDescuentos = useMemo(() => {
-    const vals = Object.values(pending);
-    return [...new Set(vals)].sort((a, b) => a - b).map((v) => `${v}%`);
-  }, [pending]);
-
-  type Row = ProductoActualizacion & { descuentoN: number | null };
-
-  const dataWithPending = useMemo<Row[]>(() => {
-    if (!loaded) return data as Row[];
-    return data.map((p) => {
-      const key = `${p.cod_universal}-${p.genero}`;
-      const pendingValue = pending[key];
-      if (pendingValue !== undefined) {
-        return { ...p, descuentoN: pendingValue };
-      }
-      return { ...p, descuentoN: null as number | null };
-    });
-  }, [data, pending, loaded]);
+  useEffect(() => {
+    setImageUrlInput("");
+  }, [editingImage]);
 
   const filteredData = useMemo(() => {
-    let result = [...dataWithPending];
+    let result = dataWithPending as Row[];
 
     if (globalFilter) {
       const search = globalFilter.toLowerCase();
@@ -232,7 +156,7 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
     [data]
   );
 
-  const handleSaveImage = async () => {
+  const handleSaveImage = useCallback(async () => {
     if (!editingImage || !imageUrlInput.trim()) return;
     if (!imageUrlInput.startsWith("https://")) {
       toast.error("La URL debe ser HTTPS.");
@@ -254,9 +178,9 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
     } finally {
       setSavingImage(false);
     }
-  };
+  }, [editingImage, imageUrlInput, router]);
 
-  const handleRemoveImage = async (cod_universal: string) => {
+  const handleRemoveImage = useCallback(async (cod_universal: string) => {
     try {
       const result = await removeProductoImagen(cod_universal);
       if (result.success) {
@@ -268,175 +192,24 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
     } catch {
       toast.error("Error al eliminar imagen.");
     }
-  };
+  }, [router]);
 
-  const handleGuardar = async () => {
-    const updates = Object.entries(pending).map(([key, af_descuento]) => {
-      const [cod_universal, genero] = key.split("-");
-      const original = data.find(
-        (p) => p.cod_universal === cod_universal && p.genero === genero
-      );
-      return {
-        cod_universal,
-        genero,
-        bf_descuento: original?.descuento ?? 0,
-        af_descuento,
-      };
-    });
-
+  const onGuardar = useCallback(async () => {
     setSaving(true);
     try {
-      const result = await guardarDescuentos(updates);
-      if (result.success) {
-        toast.success(result.msg);
-        setPending({});
-        savePending({});
-        router.refresh();
-      } else {
-        toast.error(result.msg);
-      }
-    } catch {
-      toast.error("Error al guardar descuentos.");
+      await handleGuardar();
     } finally {
       setSaving(false);
     }
-  };
+  }, [handleGuardar]);
 
-  const columns: ColumnDef<Row>[] = useMemo(
-    () => [
-      {
-        accessorKey: "imagen_url",
-        header: "Imagen",
-        cell: ({ row }) => {
-          const url = row.original.imagen_url;
-          const validUrl =
-            url && (url.startsWith("http://") || url.startsWith("https://"));
-          return (
-            <div
-              className="w-10 h-10 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (validUrl && url) {
-                  setPreviewImage(url);
-                } else {
-                  setEditingImage(row.original.cod_universal);
-                  setImageUrlInput("");
-                }
-              }}
-            >
-              {validUrl ? (
-                <Image
-                  src={url}
-                  alt={row.original.modelo}
-                  fill
-                  className="object-cover"
-                  loading="lazy"
-                  sizes="40px"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]">
-                  <Camera className="h-4 w-4 text-[#9297a0]" />
-                </div>
-              )}
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: "cod_universal",
-        header: "Cod. Universal",
-        cell: ({ row }) => (
-          <span className="font-mono text-xs">
-            {row.getValue("cod_universal")}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "marca",
-        header: "Marca",
-        cell: ({ row }) => (
-          <Badge variant="secondary" className="font-medium">
-            {row.getValue("marca")}
-          </Badge>
-        ),
-      },
-      { accessorKey: "modelo", header: "Modelo" },
-      { accessorKey: "categoria", header: "Categoria" },
-      { accessorKey: "color", header: "Color" },
-      {
-        accessorKey: "descuento",
-        header: "Desc. Actual",
-        cell: ({ row }) => {
-          const desc = row.getValue("descuento") as number;
-          return desc > 0 ? (
-            <Badge className={`${getDiscountColor(desc)} text-white`}>
-              {desc}%
-            </Badge>
-          ) : (
-            <span className="text-[#41454d]">-</span>
-          );
-        },
-      },
-      {
-        accessorKey: "descuentoN",
-        header: "Desc. Nuevo",
-        cell: ({ row }) => {
-          const codKey = `${row.original.cod_universal}-${row.original.genero}`;
-          const current = row.original.descuentoN;
-          const originalDesc = row.original.descuento;
-          return (
-            <select
-              value={current ?? ""}
-              onChange={(e) => {
-                const val = e.target.value ? Number(e.target.value) : null;
-                updatePending(codKey, val, originalDesc);
-              }}
-              className="border border-[#dddddd] rounded-md px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1b61c9]"
-            >
-              <option value="">-</option>
-              <option value={0}>0%</option>
-              {DESCUENTOS_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d}%
-                </option>
-              ))}
-            </select>
-          );
-        },
-      },
-      {
-        accessorKey: "precio_lista",
-        header: "P. Lista",
-        cell: ({ row }) => (
-          <span className="font-medium">
-            {formatPrice(row.getValue("precio_lista") as number)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "stock_total",
-        header: "Stock",
-        cell: ({ row }) => {
-          const stock = row.getValue("stock_total") as number;
-          return (
-            <span
-              className={
-                stock === 0
-                  ? "text-[#dc2626] font-medium"
-                  : "font-medium"
-              }
-            >
-              {stock}
-            </span>
-          );
-        },
-      },
-    ],
+  const columns = useMemo(
+    () => getColumns(updatePending, setPreviewImage, setEditingImage),
     [updatePending]
   );
 
   const table = useReactTable({
-    data: filteredData as Row[],
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -515,38 +288,14 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
             variant="outline"
             size="sm"
             disabled={exporting}
-            onClick={async () => {
-              setExporting(true);
-              try {
-                const rows = table.getFilteredRowModel().rows;
-                const allData: ExportProduct[] = rows.map((r) => r.original as ExportProduct);
-                const result = await exportCatalogoExcel(allData);
-                if (result.success && result.data) {
-                  const binary = atob(result.data);
-                  const bytes = new Uint8Array(binary.length);
-                  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                  const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "catalogo_actualizacion.xlsx";
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  toast.success("Excel exportado.");
-                } else {
-                  toast.error(result.msg);
-                }
-              } finally {
-                setExporting(false);
-              }
-            }}
+            onClick={() => handleExport(table.getFilteredRowModel().rows)}
             className="rounded-md whitespace-nowrap"
           >
             <Download className="h-4 w-4 mr-2" />
             {exporting ? "Exportando..." : "Exportar Excel"}
           </Button>
           <Button
-            onClick={handleGuardar}
+            onClick={onGuardar}
             disabled={saving || pendingCount === 0}
             className="bg-[#1b61c9] hover:bg-[#1a3866] text-white"
           >
