@@ -1,19 +1,6 @@
 import ExcelJS from "exceljs";
 import { DISCOUNT_COLORS, DISCOUNT_ORDER } from "./discount-colors";
-
-interface ExportProduct {
-  cod_universal: string;
-  genero: string;
-  marca: string;
-  modelo: string;
-  categoria: string;
-  grupo: string;
-  color: string;
-  descuento: number;
-  precio_final: number;
-  stock_total: number;
-  imagen_url: string | null;
-}
+import type { ExportProduct } from "@/types";
 
 async function fetchImage(url: string): Promise<{ buffer: ArrayBuffer; type: string } | null> {
   try {

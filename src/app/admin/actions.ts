@@ -5,9 +5,37 @@ import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import * as XLSX from "xlsx";
 import * as cheerio from "cheerio";
-import type { PipelineResult, Producto, Variante, VarianteRow } from "@/types";
+import type { ExportProduct, PipelineResult, Producto, Variante, VarianteRow } from "@/types";
 import type { InValue } from "@libsql/core/api";
 import { ALMACENES_VALIDOS } from "@/lib/constants";
+
+const STOCK_MAX_BYTES = 50 * 1024 * 1024;
+const IMAGENES_MAX_BYTES = 10 * 1024 * 1024;
+const DESCUENTO_MAX_BYTES = 10 * 1024 * 1024;
+
+const MIME_EXCEL = new Set([
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+]);
+const MIME_HTML = new Set(["text/html"]);
+
+function validarArchivo(
+  file: File,
+  tiposPermitidos: Set<string>,
+  maxBytes: number,
+  nombreCampo: string
+): string | null {
+  if (file.size === 0) return `El archivo de ${nombreCampo} está vacío.`;
+  if (file.size > maxBytes) {
+    const mb = Math.round(maxBytes / (1024 * 1024));
+    return `El archivo de ${nombreCampo} supera el límite de ${mb} MB.`;
+  }
+  if (!tiposPermitidos.has(file.type)) {
+    const tipos = [...tiposPermitidos].join(" / ");
+    return `Tipo de archivo no válido para ${nombreCampo}. Se espera: ${tipos}, se recibió: ${file.type || "desconocido"}.`;
+  }
+  return null;
+}
 
 export async function uploadStock(formData: FormData): Promise<PipelineResult> {
   try {
@@ -24,6 +52,19 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
       return { success: false, msg: "El archivo de stock global es obligatorio." };
     }
 
+    const errStock = validarArchivo(archivoStock, MIME_EXCEL, STOCK_MAX_BYTES, "stock");
+    if (errStock) return { success: false, msg: errStock };
+
+    if (archivoImagenes && archivoImagenes.size > 0) {
+      const errImg = validarArchivo(archivoImagenes, MIME_HTML, IMAGENES_MAX_BYTES, "imágenes");
+      if (errImg) return { success: false, msg: errImg };
+    }
+
+    for (const arc of archivosDescuentos) {
+      if (arc.size === 0) continue;
+      const errDesc = validarArchivo(arc, MIME_EXCEL, DESCUENTO_MAX_BYTES, "descuentos");
+      if (errDesc) return { success: false, msg: errDesc };
+    }
 
     // 1. Parseo de Imágenes
     const dictImagenes: Record<string, string | null> = {};
@@ -639,20 +680,6 @@ export async function removeProductoImagen(
   }
 }
 
-interface ExportProductInput {
-  cod_universal: string;
-  genero: string;
-  marca: string;
-  modelo: string;
-  categoria: string;
-  grupo: string;
-  color: string;
-  descuento: number;
-  precio_final: number;
-  stock_total: number;
-  imagen_url: string | null;
-}
-
 async function fetchImageServer(url: string): Promise<{ buffer: ArrayBuffer; type: string } | null> {
   try {
     const res = await fetch(url, {
@@ -675,7 +702,7 @@ function getExcelImageType(contentType: string): "png" | "jpeg" | "gif" {
 }
 
 export async function exportCatalogoExcel(
-  products: ExportProductInput[]
+  products: ExportProduct[]
 ): Promise<{ success: boolean; buffer?: string; msg: string }> {
   try {
     const session = await getSession();
