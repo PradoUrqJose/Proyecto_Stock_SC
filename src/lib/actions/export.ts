@@ -180,8 +180,9 @@ export async function exportCatalogoExcel(
     const base64 = Buffer.from(buffer).toString("base64");
 
     return { success: true, buffer: base64, msg: "Excel generado." };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -329,7 +330,8 @@ export async function exportUpdatesExcel(
     const buffer = await workbook.xlsx.writeBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
     return { success: true, buffer: base64, msg: "Excel generado." };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }

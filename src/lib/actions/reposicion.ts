@@ -83,8 +83,9 @@ export async function buscarReposicion(codigos: string[]): Promise<{ success: bo
     }
 
     return { success: true, items, msg: `Se encontraron ${items.length} productos con descuento para reposición.` };
-  } catch (error: any) {
-    return { success: false, items: [], msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, items: [], msg };
   }
 }
 
@@ -111,8 +112,9 @@ export async function aplicarReposicion(codigos: string[]): Promise<PipelineResu
     revalidatePath("/client");
 
     return { success: true, msg: `Se retiraron descuentos de ${uniqueCodigos.length} productos.` };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -194,8 +196,9 @@ export async function publicarReposicion(): Promise<PipelineResult> {
     revalidatePath("/client/reposicion");
 
     return { success: true, msg: `Publicado. ${total} productos visibles en cliente.` };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -215,7 +218,8 @@ export async function detenerReposicion(): Promise<PipelineResult> {
     revalidatePath("/client/reposicion");
 
     return { success: true, msg: "Reposición detenida. Ya no es visible en cliente." };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }

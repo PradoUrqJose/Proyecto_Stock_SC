@@ -77,7 +77,8 @@ export async function guardarDescuentos(
     revalidatePath("/client/actualizacion");
 
     return { success: true, msg: `${updates.length} descuentos actualizados.` };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }

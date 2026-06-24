@@ -237,8 +237,9 @@ export async function uploadStock(formData: FormData): Promise<PipelineResult> {
 
     return { success: true, msg: `Éxito. ${productosMap.size} artículos indexados a velocidad nativa.` };
 
-  } catch (error: any) {
-    return { success: false, msg: `Fallo crítico: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -270,8 +271,8 @@ export async function initUpload(): Promise<PipelineResult> {
     ], "write");
 
     return { success: true, msg: "Tablas listas." };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Error desconocido";
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg: `Error al inicializar: ${msg}` };
   }
 }
@@ -300,8 +301,8 @@ export async function uploadProductosBatch(
 
     await turso.batch(ops, "write");
     return { success: true, msg: `${productos.length} productos insertados.` };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Error desconocido";
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg: `Error al insertar productos: ${msg}` };
   }
 }
@@ -329,8 +330,8 @@ export async function uploadVariantesBatch(
 
     await turso.batch(ops, "write");
     return { success: true, msg: `${variantes.length} variantes insertadas.` };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Error desconocido";
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg: `Error al insertar variantes: ${msg}` };
   }
 }
@@ -386,8 +387,8 @@ export async function finalizeUpload(
     revalidatePath("/client");
 
     return { success: true, msg: "Base de datos finalizada correctamente." };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Error desconocido";
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
     return { success: false, msg: `Error al finalizar: ${msg}` };
   }
 }
@@ -407,8 +408,9 @@ export async function limpiarImagenesRotas() {
     revalidatePath("/admin");
     revalidatePath("/client");
     return { success: true, msg: "Imágenes rotas limpiadas." };
-  } catch (error: any) {
-    return { success: false, msg: error.message };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -439,8 +441,9 @@ export async function setProductoImagen(
     revalidatePath("/admin/productos");
     revalidatePath("/client");
     return { success: true, msg: "Imagen guardada." };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -461,8 +464,9 @@ export async function removeProductoImagen(
     revalidatePath("/admin/productos");
     revalidatePath("/client");
     return { success: true, msg: "Imagen eliminada." };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
 
@@ -500,7 +504,8 @@ export async function getVariantesByProducto(
     }));
 
     return { success: true, data };
-  } catch (error: any) {
-    return { success: false, msg: `Error: ${error.message}` };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
   }
 }
