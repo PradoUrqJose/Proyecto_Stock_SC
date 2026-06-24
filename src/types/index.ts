@@ -64,6 +64,7 @@ export interface Tienda {
 export interface User {
   id: string;
   email: string;
+  username: string;
   name: string;
   role: "admin" | "client";
   tienda_id: string | null;

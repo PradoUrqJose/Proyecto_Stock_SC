@@ -137,7 +137,7 @@ export async function getAlmacenesDisponibles(): Promise<string[]> {
 export async function getUsuarios(): Promise<User[]> {
   await requireAdmin();
   const result = await turso.execute(`
-    SELECT u.id, u.email, u.name, u.role, u.tienda_id, u.created_at,
+    SELECT u.id, u.email, u.username, u.name, u.role, u.tienda_id, u.created_at,
            t.nombre as tienda_nombre
     FROM users u
     LEFT JOIN tiendas t ON u.tienda_id = t.id
@@ -146,6 +146,7 @@ export async function getUsuarios(): Promise<User[]> {
   return result.rows.map((r) => ({
     id: r.id as string,
     email: r.email as string,
+    username: r.username as string,
     name: r.name as string,
     role: r.role as "admin" | "client",
     tienda_id: (r.tienda_id as string) ?? null,
@@ -157,6 +158,7 @@ export async function getUsuarios(): Promise<User[]> {
 export async function createUsuario(data: {
   name: string;
   email: string;
+  username: string;
   password: string;
   role: "admin" | "client";
   tienda_id: string | null;
@@ -164,29 +166,38 @@ export async function createUsuario(data: {
   try {
     await requireAdmin();
 
-    if (!data.name.trim() || !data.email.trim() || !data.password) {
-      return { success: false, msg: "Nombre, email y contraseña son requeridos." };
+    if (!data.name.trim() || !data.email.trim() || !data.username.trim() || !data.password) {
+      return { success: false, msg: "Nombre, email, usuario y contraseña son requeridos." };
     }
     if (data.password.length < 6) {
       return { success: false, msg: "La contraseña debe tener al menos 6 caracteres." };
     }
 
-    const existing = await turso.execute({
+    const existingEmail = await turso.execute({
       sql: "SELECT id FROM users WHERE email = ?",
       args: [data.email.trim().toLowerCase()],
     });
-    if (existing.rows.length > 0) {
+    if (existingEmail.rows.length > 0) {
       return { success: false, msg: "Ya existe un usuario con ese correo." };
+    }
+
+    const existingUsername = await turso.execute({
+      sql: "SELECT id FROM users WHERE username = ?",
+      args: [data.username.trim().toLowerCase()],
+    });
+    if (existingUsername.rows.length > 0) {
+      return { success: false, msg: "Ya existe un usuario con ese nombre de usuario." };
     }
 
     const id = crypto.randomUUID();
     const hashed = await hashPassword(data.password);
 
     await turso.execute({
-      sql: "INSERT INTO users (id, email, password, name, role, tienda_id) VALUES (?, ?, ?, ?, ?, ?)",
+      sql: "INSERT INTO users (id, email, username, password, name, role, tienda_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
       args: [
         id,
         data.email.trim().toLowerCase(),
+        data.username.trim().toLowerCase(),
         hashed,
         data.name.trim(),
         data.role,
@@ -207,6 +218,7 @@ export async function updateUsuario(
   data: {
     name: string;
     email: string;
+    username: string;
     role: "admin" | "client";
     tienda_id: string | null;
     password?: string;
@@ -215,16 +227,24 @@ export async function updateUsuario(
   try {
     const session = await requireAdmin();
 
-    if (!data.name.trim() || !data.email.trim()) {
-      return { success: false, msg: "Nombre y email son requeridos." };
+    if (!data.name.trim() || !data.email.trim() || !data.username.trim()) {
+      return { success: false, msg: "Nombre, email y usuario son requeridos." };
     }
 
-    const conflict = await turso.execute({
+    const conflictEmail = await turso.execute({
       sql: "SELECT id FROM users WHERE email = ? AND id != ?",
       args: [data.email.trim().toLowerCase(), id],
     });
-    if (conflict.rows.length > 0) {
+    if (conflictEmail.rows.length > 0) {
       return { success: false, msg: "Ya existe otro usuario con ese correo." };
+    }
+
+    const conflictUsername = await turso.execute({
+      sql: "SELECT id FROM users WHERE username = ? AND id != ?",
+      args: [data.username.trim().toLowerCase(), id],
+    });
+    if (conflictUsername.rows.length > 0) {
+      return { success: false, msg: "Ya existe otro usuario con ese nombre de usuario." };
     }
 
     // No permitir que un admin se quite el rol de admin a sí mismo
@@ -238,13 +258,13 @@ export async function updateUsuario(
       }
       const hashed = await hashPassword(data.password);
       await turso.execute({
-        sql: "UPDATE users SET name = ?, email = ?, role = ?, tienda_id = ?, password = ? WHERE id = ?",
-        args: [data.name.trim(), data.email.trim().toLowerCase(), data.role, data.tienda_id ?? null, hashed, id],
+        sql: "UPDATE users SET name = ?, email = ?, username = ?, role = ?, tienda_id = ?, password = ? WHERE id = ?",
+        args: [data.name.trim(), data.email.trim().toLowerCase(), data.username.trim().toLowerCase(), data.role, data.tienda_id ?? null, hashed, id],
       });
     } else {
       await turso.execute({
-        sql: "UPDATE users SET name = ?, email = ?, role = ?, tienda_id = ? WHERE id = ?",
-        args: [data.name.trim(), data.email.trim().toLowerCase(), data.role, data.tienda_id ?? null, id],
+        sql: "UPDATE users SET name = ?, email = ?, username = ?, role = ?, tienda_id = ? WHERE id = ?",
+        args: [data.name.trim(), data.email.trim().toLowerCase(), data.username.trim().toLowerCase(), data.role, data.tienda_id ?? null, id],
       });
     }
 

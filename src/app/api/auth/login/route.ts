@@ -17,16 +17,16 @@ export async function POST(request: Request) {
 
     await initDatabase();
 
-    const { email, password } = await request.json();
+    const { username, password } = await request.json();
 
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
-        { error: "Email y contrasena son requeridos" },
+        { error: "Usuario y contraseña son requeridos" },
         { status: 400 }
       );
     }
 
-    const result = await authenticate(email, password);
+    const result = await authenticate(username, password);
 
     if (!result) {
       return NextResponse.json(

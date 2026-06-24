@@ -11,6 +11,7 @@ export async function initDatabase() {
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
+      username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'client' CHECK(role IN ('admin', 'client')),
@@ -75,20 +76,46 @@ export async function initDatabase() {
     );
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@merch.com";
+  // Migración: agregar username a users si no existe
+  const hasUsername = userColumns.rows.some((r) => r.name === "username");
+  if (!hasUsername) {
+    await turso.execute("ALTER TABLE users ADD COLUMN username TEXT");
+    await turso.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)");
+
+    // Migrar usuarios existentes: generar username desde email
+    const usersResult = await turso.execute("SELECT id, email FROM users WHERE username IS NULL");
+    const usedUsernames = new Set<string>();
+    for (const row of usersResult.rows) {
+      const email = row.email as string;
+      const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "");
+      let username = baseUsername;
+      let counter = 1;
+      while (usedUsernames.has(username)) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+      usedUsernames.add(username);
+      await turso.execute({
+        sql: "UPDATE users SET username = ? WHERE id = ?",
+        args: [username, row.id as string],
+      });
+    }
+  }
+
+  const adminUsername = process.env.ADMIN_USERNAME || "admin";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
 
   const existing = await turso.execute({
-    sql: "SELECT id FROM users WHERE email = ?",
-    args: [adminEmail],
+    sql: "SELECT id FROM users WHERE username = ?",
+    args: [adminUsername],
   });
 
   if (existing.rows.length === 0) {
     const id = crypto.randomUUID();
     const hashed = await hashPassword(adminPassword);
     await turso.execute({
-      sql: "INSERT INTO users (id, email, password, name, role) VALUES (?, ?, ?, ?, ?)",
-      args: [id, adminEmail, hashed, "Administrador", "admin"],
+      sql: "INSERT INTO users (id, email, username, password, name, role) VALUES (?, ?, ?, ?, ?, ?)",
+      args: [id, `${adminUsername}@admin.local`, adminUsername, hashed, "Administrador", "admin"],
     });
   }
 }

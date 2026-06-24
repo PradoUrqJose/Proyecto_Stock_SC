@@ -13,6 +13,7 @@ if (!SECRET || SECRET.length === 0) {
 export interface SessionUser {
   id: string;
   email: string;
+  username: string;
   name: string;
   role: "admin" | "client";
   tienda_id: string | null;
@@ -49,16 +50,17 @@ export async function verifyToken(
   }
 }
 
-export async function getUserByEmail(email: string) {
+export async function getUserByUsername(username: string) {
   const result = await turso.execute({
-    sql: "SELECT * FROM users WHERE email = ?",
-    args: [email],
+    sql: "SELECT * FROM users WHERE username = ?",
+    args: [username],
   });
   return result.rows[0] || null;
 }
 
 export async function createUser(
   email: string,
+  username: string,
   password: string,
   name: string,
   role: "admin" | "client" = "client",
@@ -67,17 +69,17 @@ export async function createUser(
   const id = crypto.randomUUID();
   const hashedPassword = await hashPassword(password);
   await turso.execute({
-    sql: "INSERT INTO users (id, email, password, name, role, tienda_id) VALUES (?, ?, ?, ?, ?, ?)",
-    args: [id, email, hashedPassword, name, role, tienda_id],
+    sql: "INSERT INTO users (id, email, username, password, name, role, tienda_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    args: [id, email, username, hashedPassword, name, role, tienda_id],
   });
-  return { id, email, name, role, tienda_id };
+  return { id, email, username, name, role, tienda_id };
 }
 
 export async function authenticate(
-  email: string,
+  username: string,
   password: string
 ): Promise<{ user: SessionUser; token: string } | null> {
-  const user = await getUserByEmail(email);
+  const user = await getUserByUsername(username);
   if (!user) return null;
 
   const valid = await verifyPassword(password, user.password as string);
@@ -96,6 +98,7 @@ export async function authenticate(
   const sessionUser: SessionUser = {
     id: user.id as string,
     email: user.email as string,
+    username: user.username as string,
     name: user.name as string,
     role: user.role as "admin" | "client",
     tienda_id: (user.tienda_id as string) ?? null,

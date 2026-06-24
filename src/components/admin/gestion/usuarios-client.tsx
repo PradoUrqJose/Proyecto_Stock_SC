@@ -41,6 +41,7 @@ interface Props {
 type FormData = {
   name: string;
   email: string;
+  username: string;
   password: string;
   role: "admin" | "client";
   tienda_id: string | null;
@@ -49,6 +50,7 @@ type FormData = {
 const emptyForm = (): FormData => ({
   name: "",
   email: "",
+  username: "",
   password: "",
   role: "client",
   tienda_id: null,
@@ -89,6 +91,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
         id: fakeId,
         name: createForm.name,
         email: createForm.email,
+        username: createForm.username,
         role: createForm.role,
         tienda_id: createForm.tienda_id,
         tienda_nombre: tiendaNombre(createForm.tienda_id),
@@ -113,6 +116,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
     setEditForm({
       name: u.name,
       email: u.email,
+      username: u.username,
       password: "",
       role: u.role,
       tienda_id: u.tienda_id,
@@ -124,6 +128,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
       const updated: Partial<User> = {
         name: editForm.name,
         email: editForm.email,
+        username: editForm.username,
         role: editForm.role,
         tienda_id: editForm.tienda_id,
         tienda_nombre: tiendaNombre(editForm.tienda_id),
@@ -137,6 +142,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
         optimisticUpdate(editingUser.id, {
           name: editingUser.name,
           email: editingUser.email,
+          username: editingUser.username,
           role: editingUser.role,
           tienda_id: editingUser.tienda_id,
           tienda_nombre: editingUser.tienda_nombre,
@@ -205,7 +211,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
                     </div>
                     <div>
                       <p className="text-sm font-medium text-[#181d26]">{u.name}</p>
-                      <p className="text-xs text-[#41454d]">{u.email}</p>
+                      <p className="text-xs text-[#41454d]">{u.username}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -373,15 +379,26 @@ function UserForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-sm text-[#333840]">Correo</Label>
+          <Label className="text-sm text-[#333840]">Usuario</Label>
           <Input
-            type="email"
-            placeholder="correo@ejemplo.com"
-            value={form.email}
-            onChange={(e) => set("email")(e.target.value)}
+            type="text"
+            placeholder="nombre_usuario"
+            value={form.username}
+            onChange={(e) => set("username")(e.target.value)}
             className="border-[#dddddd]"
           />
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-sm text-[#333840]">Correo</Label>
+        <Input
+          type="email"
+          placeholder="correo@ejemplo.com"
+          value={form.email}
+          onChange={(e) => set("email")(e.target.value)}
+          className="border-[#dddddd]"
+        />
       </div>
 
       {showPassword && (
