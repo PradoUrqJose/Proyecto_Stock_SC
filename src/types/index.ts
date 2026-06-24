@@ -25,6 +25,20 @@ export interface ProductoAdmin {
   stock_total: number;
 }
 
+export interface VarianteRow {
+  cod_universal: string;
+  genero: string;
+  alm_izq: string;
+  alm_der: string | null;
+  cod_barras: string;
+  talla: string;
+  precio_lista: number;
+  modelo: string;
+  bf_descuento: number;
+  af_descuento: number;
+  precio_final: number;
+}
+
 export interface Variante {
   cod_universal: string;
   genero: string;

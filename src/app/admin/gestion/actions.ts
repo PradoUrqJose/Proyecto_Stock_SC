@@ -13,6 +13,7 @@ import type { PipelineResult } from "@/types";
 // ─────────────────────────────────────────────
 
 async function requireAdmin() {
+  await initDatabase();
   const session = await getSession();
   if (!session || session.role !== "admin") {
     throw new Error("No autorizado.");
@@ -135,7 +136,6 @@ export async function getAlmacenesDisponibles(): Promise<string[]> {
 
 export async function getUsuarios(): Promise<User[]> {
   await requireAdmin();
-  await initDatabase(); // aplica migraciones pendientes (ej: columna tienda_id)
   const result = await turso.execute(`
     SELECT u.id, u.email, u.name, u.role, u.tienda_id, u.created_at,
            t.nombre as tienda_nombre

@@ -15,6 +15,8 @@ import {
   Settings,
   Store,
   Users,
+  Wrench,
+  History,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -25,9 +27,13 @@ interface SidebarProps {
 
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+];
+
+const adminOperacionLinks = [
   { href: "/admin/productos", label: "Productos", icon: Package },
   { href: "/admin/actualizacion", label: "Actualización", icon: Percent },
   { href: "/admin/reposicion", label: "Reposición", icon: RefreshCcw },
+  { href: "/admin/actualizacion-updates", label: "Registro Cambios", icon: History },
 ];
 
 const adminGestionLinks = [
@@ -48,6 +54,9 @@ export function Sidebar({ role }: SidebarProps) {
 
   const links = role === "admin" ? adminLinks : clientLinks;
 
+  const isActiveLink = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
   const handleLogout = async () => {
     await signOut();
     router.push("/login");
@@ -67,7 +76,7 @@ export function Sidebar({ role }: SidebarProps) {
           const isActive =
             link.href === "/admin" || link.href === "/client"
               ? pathname === link.href
-              : pathname.startsWith(link.href);
+              : isActiveLink(link.href);
           return (
             <Link
               key={link.href}
@@ -89,13 +98,42 @@ export function Sidebar({ role }: SidebarProps) {
         {role === "admin" && (
           <div className="pt-3">
             <div className="flex items-center gap-2 px-3 pb-1.5">
+              <Wrench className="h-3.5 w-3.5 text-white/30" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
+                Operación
+              </span>
+            </div>
+            {adminOperacionLinks.map((link) => {
+              const isActive = isActiveLink(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <link.icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+        {role === "admin" && (
+          <div className="pt-3">
+            <div className="flex items-center gap-2 px-3 pb-1.5">
               <Settings className="h-3.5 w-3.5 text-white/30" />
               <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
                 Gestión
               </span>
             </div>
             {adminGestionLinks.map((link) => {
-              const isActive = pathname.startsWith(link.href);
+              const isActive = isActiveLink(link.href);
               return (
                 <Link
                   key={link.href}
