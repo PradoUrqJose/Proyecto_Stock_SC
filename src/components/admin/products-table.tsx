@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Search, Upload, ArrowUpDown, Download, Package, X, Camera, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Upload, ArrowUpDown, Download, Package, X, Camera, Pencil, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { UploadModal } from "./upload-modal";
 import { MultiFilter } from "@/components/multi-filter";
@@ -183,7 +183,7 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
           const validUrl = url && (url.startsWith("http://") || url.startsWith("https://"));
           return (
             <div
-              className="w-10 h-10 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all"
+              className="w-10 h-10 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all group"
               onClick={(e) => {
                 e.stopPropagation();
                 if (validUrl && url) {
@@ -195,7 +195,20 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
               }}
             >
               {validUrl ? (
-                <Image src={url} alt={row.original.modelo} fill className="object-cover" loading="lazy" sizes="40px" />
+                <>
+                  <Image src={url} alt={row.original.modelo} fill className="object-cover" loading="lazy" sizes="40px" />
+                  <div
+                    className="absolute bottom-0 right-0 h-4 w-4 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Editar imagen"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingImage(row.original.cod_universal);
+                      setImageUrlInput(url!);
+                    }}
+                  >
+                    <Pencil className="h-2.5 w-2.5 text-white" />
+                  </div>
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]" title="Agregar imagen">
                   <Camera className="h-4 w-4 text-[#9297a0]" />
@@ -390,7 +403,7 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
       <Dialog open={!!editingImage} onOpenChange={() => setEditingImage(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Agregar imagen</DialogTitle>
+            <DialogTitle>{imageUrlInput ? "Editar imagen" : "Agregar imagen"}</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5">
               Código:{" "}
               <a

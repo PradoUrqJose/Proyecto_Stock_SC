@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { Camera } from "lucide-react";
+import { Camera, Pencil } from "lucide-react";
 import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Producto } from "@/types";
@@ -22,7 +22,8 @@ type Row = Producto & { descuentoN: number | null };
 export function getColumns(
   updatePending: (codKey: string, valor: number | null, originalDesc: number) => void,
   setPreviewImage: (url: string | null) => void,
-  setEditingImage: (cod: string | null) => void
+  setEditingImage: (cod: string | null) => void,
+  setImageUrlInput: (url: string) => void
 ): ColumnDef<Row>[] {
   return [
     {
@@ -34,25 +35,39 @@ export function getColumns(
           url && (url.startsWith("http://") || url.startsWith("https://"));
         return (
           <div
-            className="w-10 h-10 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all"
+            className="w-10 h-10 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all group"
             onClick={(e) => {
               e.stopPropagation();
               if (validUrl && url) {
                 setPreviewImage(url);
               } else {
                 setEditingImage(row.original.cod_universal);
+                setImageUrlInput("");
               }
             }}
           >
             {validUrl ? (
-              <Image
-                src={url!}
-                alt={row.original.modelo}
-                fill
-                className="object-cover"
-                loading="lazy"
-                sizes="40px"
-              />
+              <>
+                <Image
+                  src={url!}
+                  alt={row.original.modelo}
+                  fill
+                  className="object-cover"
+                  loading="lazy"
+                  sizes="40px"
+                />
+                <div
+                  className="absolute bottom-0 right-0 h-4 w-4 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Editar imagen"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingImage(row.original.cod_universal);
+                    setImageUrlInput(url!);
+                  }}
+                >
+                  <Pencil className="h-2.5 w-2.5 text-white" />
+                </div>
+              </>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]" title="Agregar imagen">
                 <Camera className="h-4 w-4 text-[#9297a0]" />

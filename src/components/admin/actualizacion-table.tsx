@@ -40,6 +40,7 @@ import {
   Loader2,
   X,
   Download,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MultiFilter } from "@/components/multi-filter";
@@ -236,7 +237,7 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
   }, [handleGuardar]);
 
   const columns = useMemo(
-    () => getColumns(updatePending, setPreviewImage, setEditingImage),
+    () => getColumns(updatePending, setPreviewImage, setEditingImage, setImageUrlInput),
     [updatePending]
   );
 
@@ -452,7 +453,7 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
       <Dialog open={!!editingImage} onOpenChange={() => setEditingImage(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Agregar imagen</DialogTitle>
+            <DialogTitle>{imageUrlInput ? "Editar imagen" : "Agregar imagen"}</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5">
               Código:{" "}
               <a

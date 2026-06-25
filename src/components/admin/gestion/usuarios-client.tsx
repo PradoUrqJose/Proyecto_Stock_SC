@@ -437,7 +437,9 @@ function UserForm({
             onValueChange={(v) => onChange({ ...form, tienda_id: v === "none" ? null : v })}
           >
             <SelectTrigger className="border-[#dddddd]">
-              <SelectValue placeholder="Sin tienda" />
+              <SelectValue placeholder="Sin tienda">
+                {tiendas.find((t) => t.id === form.tienda_id)?.nombre ?? "Sin tienda"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Sin tienda</SelectItem>
