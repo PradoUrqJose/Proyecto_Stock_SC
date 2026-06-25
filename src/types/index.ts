@@ -87,7 +87,7 @@ export interface ExportProduct {
   grupo: string;
   color: string;
   descuento: number;
-  precio_final: number;
+  precio_lista: number;
   stock_total: number;
   imagen_url: string | null;
 }

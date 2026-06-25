@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, ArrowUpDown, X, Package, ArrowDown, ArrowUp, Loader2, FileSpreadsheet, FileArchive } from "lucide-react";
-import { getDiscountColor } from "@/lib/discount-colors";
+import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import { getVariantesByProducto } from "@/lib/actions/products";
 import { exportUpdatesExcel } from "@/lib/actions/export";
 import { exportUpdatesZip } from "@/lib/export-updates-zip";
@@ -217,7 +217,7 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
         header: "Desc. Anterior",
         cell: ({ row }) => {
           const desc = row.getValue("bf_descuento") as number;
-          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} text-white`}>{desc}%</Badge> : <span className="text-[#41454d]">0%</span>;
+          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>{desc}%</Badge> : <span className="text-[#41454d]">0%</span>;
         },
       },
       {
@@ -225,7 +225,7 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
         header: "Desc. Actual",
         cell: ({ row }) => {
           const desc = row.getValue("af_descuento") as number;
-          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} text-white`}>{desc}%</Badge> : <span className="text-[#41454d]">0%</span>;
+          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>{desc}%</Badge> : <span className="text-[#41454d]">0%</span>;
         },
       },
       {
@@ -385,14 +385,14 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
                                         <td className="px-2 py-2 text-[#333840]">{v.talla}</td>
                                         <td className="px-2 py-2">
                                           {v.bf_descuento > 0 ? (
-                                            <Badge className={`${getDiscountColor(v.bf_descuento)} text-white`}>{v.bf_descuento}%</Badge>
+                                            <Badge className={`${getDiscountColor(v.bf_descuento)} ${getDiscountTextClass(v.bf_descuento)} text-[13px]`}>{v.bf_descuento}%</Badge>
                                           ) : (
                                             <span className="text-[#41454d]">0%</span>
                                           )}
                                         </td>
                                         <td className="px-2 py-2">
                                           {v.af_descuento > 0 ? (
-                                            <Badge className={`${getDiscountColor(v.af_descuento)} text-white`}>{v.af_descuento}%</Badge>
+                                            <Badge className={`${getDiscountColor(v.af_descuento)} ${getDiscountTextClass(v.af_descuento)} text-[13px]`}>{v.af_descuento}%</Badge>
                                           ) : (
                                             <span className="text-[#41454d]">0%</span>
                                           )}

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Camera } from "lucide-react";
-import { getDiscountColor } from "@/lib/discount-colors";
+import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Producto } from "@/types";
 
@@ -89,7 +89,7 @@ export function getColumns(
       cell: ({ row }) => {
         const desc = row.getValue("descuento") as number;
         return desc > 0 ? (
-          <Badge className={`${getDiscountColor(desc)} text-white`}>
+          <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>
             {desc}%
           </Badge>
         ) : (

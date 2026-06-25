@@ -166,12 +166,14 @@ export async function exportToExcel(products: ExportProduct[]) {
     });
 
     if (idx % 2 === 0) {
-      row.eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFF9FAFB" },
-        };
+      row.eachCell((cell, colNumber) => {
+        if (!(colNumber >= 10 && cell.value !== null && cell.value !== undefined)) {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF9FAFB" },
+          };
+        }
       });
     }
   });

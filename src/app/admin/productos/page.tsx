@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default async function AdminProductosPage() {
   const result = await turso.execute(
     `SELECT p.cod_universal, p.genero, p.grupo, p.marca, p.modelo, 
-            p.categoria, p.color, p.descuento, p.precio_final, 
+            p.categoria, p.color, p.descuento, p.precio_lista, p.precio_final, 
             p.stock_total, 
             COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
      FROM productos p
@@ -27,6 +27,7 @@ export default async function AdminProductosPage() {
     categoria: row.categoria as string,
     color: row.color as string,
     descuento: row.descuento as number,
+    precio_lista: row.precio_lista as number,
     precio_final: row.precio_final as number,
     stock_total: row.stock_total as number,
     imagen_url: row.imagen_url as string | null,

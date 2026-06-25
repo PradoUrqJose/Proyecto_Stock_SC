@@ -42,7 +42,7 @@ import {
   X,
   Package,
 } from "lucide-react";
-import { getDiscountColor } from "@/lib/discount-colors";
+import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 
 interface ProductoReposicion {
   cod_universal: string;
@@ -179,7 +179,7 @@ export function RepositionClientTable({
         cell: ({ row }) => {
           const desc = row.getValue("descuento") as number;
           return (
-            <Badge className={`${getDiscountColor(desc)} text-white`}>
+            <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>
               {desc}%
             </Badge>
           );

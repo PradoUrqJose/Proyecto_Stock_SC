@@ -42,7 +42,7 @@ import {
   obtenerReposicionActual,
   type ReposicionItem,
 } from "@/lib/actions/reposicion";
-import { getDiscountColor } from "@/lib/discount-colors";
+import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import { exportReposicionToExcel } from "@/lib/export-reposicion-excel";
 
 export function ReposicionTable() {
@@ -205,7 +205,7 @@ export function ReposicionTable() {
       cell: ({ row }) => {
         const desc = row.getValue("descuento") as number;
         return (
-          <Badge className={`${getDiscountColor(desc)} text-white`}>
+          <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>
             {desc}%
           </Badge>
         );

@@ -11,7 +11,7 @@ export default async function ClientPage() {
   const result = await turso.execute(
     `SELECT p.cod_universal, p.genero, p.marca, p.modelo, 
             p.categoria, p.grupo, p.color, p.descuento, 
-            p.precio_final, p.stock_total,
+            p.precio_lista, p.precio_final, p.stock_total,
             COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
      FROM productos p
      LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal
@@ -27,6 +27,7 @@ export default async function ClientPage() {
     grupo: row.grupo as string,
     color: row.color as string,
     descuento: row.descuento as number,
+    precio_lista: row.precio_lista as number,
     precio_final: row.precio_final as number,
     stock_total: row.stock_total as number,
     imagen_url: row.imagen_url as string | null,

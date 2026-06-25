@@ -46,14 +46,14 @@ export async function exportCatalogoExcel(
     }
 
     const ExcelJS = await import("exceljs");
-    const { DISCOUNT_COLORS, DISCOUNT_ORDER } = await import("@/lib/discount-colors");
+    const { DISCOUNT_COLORS, DISCOUNT_ORDER, getDiscountTextHex } = await import("@/lib/discount-colors");
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Catálogo de Productos");
 
     const headers = [
       "Imagen", "Cod. Marca", "Marca", "Modelo", "Género",
-      "Categoría", "Color", "Cant.", "P. Venta",
+      "Categoría", "Color", "Grupo", "Cant.", "P. Lista",
       "10%", "20%", "30%", "40%", "50%", "60%", "70%",
     ];
     sheet.addRow(headers);
@@ -62,12 +62,13 @@ export async function exportCatalogoExcel(
     headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
     headerRow.eachCell((cell, colNumber) => {
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      if (colNumber >= 10) {
-        const pct = DISCOUNT_ORDER[colNumber - 10];
+      if (colNumber >= 11) {
+        const pct = DISCOUNT_ORDER[colNumber - 11];
         const color = DISCOUNT_COLORS[pct];
+        cell.font = { bold: true, color: { argb: getDiscountTextHex(pct) } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color?.excel ?? "FF000000" } };
       } else {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
       }
     });
@@ -111,11 +112,11 @@ export async function exportCatalogoExcel(
 
       const row = sheet.addRow([
         "", product.cod_universal, product.marca, product.modelo,
-        product.genero, product.categoria, product.color,
-        product.stock_total, product.precio_final, ...discountValues,
+        product.genero, product.categoria, product.color, product.grupo,
+        product.stock_total, product.precio_lista, ...discountValues,
       ]);
       row.height = IMAGE_ROW_HEIGHT;
-      row.alignment = { vertical: "middle" };
+      row.alignment = { vertical: "middle", horizontal: "center" };
 
       const imageData = imageMap.get(idx);
       if (imageData) {
@@ -134,27 +135,28 @@ export async function exportCatalogoExcel(
           left: { style: "thin", color: { argb: "FFE5E7EB" } },
           right: { style: "thin", color: { argb: "FFE5E7EB" } },
         };
-        if (colNumber >= 10) {
-          cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        if (colNumber >= 11) {
           if (cell.value !== null && cell.value !== undefined) {
             cell.numFmt = "#,##0.00";
-            const pct = DISCOUNT_ORDER[colNumber - 10];
+            const pct = DISCOUNT_ORDER[colNumber - 11];
             const color = DISCOUNT_COLORS[pct];
             if (color) {
               cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.excel } };
-              cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
+              cell.font = { color: { argb: getDiscountTextHex(pct) }, bold: true };
             }
           }
         }
-        if (colNumber === 8 || colNumber === 9) {
+        if (colNumber === 9 || colNumber === 10) {
           cell.numFmt = "#,##0.00";
-          cell.alignment = { vertical: "middle", horizontal: "right" };
         }
       });
 
       if (idx % 2 === 0) {
-        row.eachCell((cell) => {
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } };
+        row.eachCell((cell, colNumber) => {
+          if (!(colNumber >= 11 && cell.value !== null && cell.value !== undefined)) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } };
+          }
         });
       }
     });
@@ -166,15 +168,16 @@ export async function exportCatalogoExcel(
     sheet.getColumn(5).width = 14;
     sheet.getColumn(6).width = 16;
     sheet.getColumn(7).width = 14;
-    sheet.getColumn(8).width = 10;
-    sheet.getColumn(9).width = 14;
-    sheet.getColumn(10).width = 12;
+    sheet.getColumn(8).width = 14;
+    sheet.getColumn(9).width = 10;
+    sheet.getColumn(10).width = 14;
     sheet.getColumn(11).width = 12;
     sheet.getColumn(12).width = 12;
     sheet.getColumn(13).width = 12;
     sheet.getColumn(14).width = 12;
     sheet.getColumn(15).width = 12;
     sheet.getColumn(16).width = 12;
+    sheet.getColumn(17).width = 12;
 
     const buffer = await workbook.xlsx.writeBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
@@ -196,7 +199,7 @@ export async function exportUpdatesExcel(
     }
 
     const ExcelJS = await import("exceljs");
-    const { DISCOUNT_COLORS } = await import("@/lib/discount-colors");
+    const { DISCOUNT_COLORS, getDiscountTextHex } = await import("@/lib/discount-colors");
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Registro Cambios");
@@ -283,7 +286,7 @@ export async function exportUpdatesExcel(
           const color = DISCOUNT_COLORS[product.bf_descuento];
           if (color) {
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.excel } };
-            cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
+            cell.font = { color: { argb: getDiscountTextHex(product.bf_descuento) }, bold: true };
           }
           cell.alignment = { vertical: "middle", horizontal: "center" };
         }
@@ -292,7 +295,7 @@ export async function exportUpdatesExcel(
           const color = DISCOUNT_COLORS[product.af_descuento];
           if (color) {
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color.excel } };
-            cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
+            cell.font = { color: { argb: getDiscountTextHex(product.af_descuento) }, bold: true };
           }
           cell.alignment = { vertical: "middle", horizontal: "center" };
         }

@@ -14,7 +14,7 @@ import { ChevronLeft, ChevronRight, Search, Upload, ArrowUpDown, Download, Packa
 import { toast } from "sonner";
 import { UploadModal } from "./upload-modal";
 import { MultiFilter } from "@/components/multi-filter";
-import { getDiscountColor } from "@/lib/discount-colors";
+import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import { setProductoImagen, removeProductoImagen } from "@/lib/actions/products";
 import { exportCatalogoExcel } from "@/lib/actions/export";
 import type { ExportProduct } from "@/types";
@@ -28,6 +28,7 @@ interface ProductoAdmin {
   categoria: string;
   color: string;
   descuento: number;
+  precio_lista: number;
   precio_final: number;
   stock_total: number;
   imagen_url: string | null;
@@ -239,7 +240,7 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
         header: "Descuento",
         cell: ({ row }) => {
           const desc = row.getValue("descuento") as number;
-          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} text-white`}>{desc}%</Badge> : <span className="text-[#41454d]">-</span>;
+          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>{desc}%</Badge> : <span className="text-[#41454d]">-</span>;
         },
       },
       {

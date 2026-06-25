@@ -12,7 +12,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown, X, Package, Download } from "lucide-react";
 import { exportCatalogoExcel } from "@/lib/actions/export";
 import { MultiFilter } from "@/components/multi-filter";
-import { getDiscountColor } from "@/lib/discount-colors";
+import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import { toast } from "sonner";
 import type { ExportProduct } from "@/types";
 
@@ -25,6 +25,7 @@ interface ProductoClient {
   grupo: string;
   color: string;
   descuento: number;
+  precio_lista: number;
   precio_final: number;
   stock_total: number;
   imagen_url: string | null;
@@ -176,7 +177,7 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
         header: "Descuento",
         cell: ({ row }) => {
           const desc = row.getValue("descuento") as number;
-          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} text-white`}>{desc}%</Badge> : <span className="text-[#41454d]">-</span>;
+          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>{desc}%</Badge> : <span className="text-[#41454d]">-</span>;
         },
       },
       {
