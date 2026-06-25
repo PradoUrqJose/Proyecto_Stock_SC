@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ReposicionTable } from "@/components/admin/reposicion-table";
 import type { Metadata } from "next";
 
@@ -14,7 +15,9 @@ export default async function AdminReposicionPage() {
           Sube un archivo .txt con códigos universales para retirar descuentos por reposición.
         </p>
       </div>
-      <ReposicionTable />
+      <Suspense fallback={null}>
+        <ReposicionTable />
+      </Suspense>
     </div>
   );
 }

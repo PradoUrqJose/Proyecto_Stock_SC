@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, Fragment, useCallback } from "react";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getExpandedRowModel, flexRender, type ColumnDef, type SortingState, type ExpandedState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -45,9 +46,11 @@ function formatPrice(value: number): string {
 type SubSortKey = keyof VarianteRow;
 
 export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Props) {
+  const { get, getAll, getPage, sync, makePaginationHandler } = useTableUrlState();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [selectedTiendas, setSelectedTiendas] = useState<string[]>([]);
+  const [globalFilter, setGlobalFilter] = useState(() => get("q"));
+  const [selectedTiendas, setSelectedTiendas] = useState<string[]>(() => getAll("tienda"));
+  const [pagination, setPagination] = useState(() => ({ pageIndex: getPage(), pageSize: 15 }));
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [subSort, setSubSort] = useState<{ key: SubSortKey; dir: "asc" | "desc" } | null>(null);
@@ -74,6 +77,20 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
 
     return result;
   }, [data, globalFilter, selectedTiendas, productoTiendas]);
+
+  const snap = (overrides: Record<string, string | string[] | number> = {}) =>
+    sync({ q: globalFilter, tienda: selectedTiendas, page: pagination.pageIndex + 1, ...overrides });
+
+  const handleSearchChange = (value: string) => {
+    setGlobalFilter(value);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ q: value, page: 1 });
+  };
+  const handleTiendasChange = (values: string[]) => {
+    setSelectedTiendas(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ tienda: values, page: 1 });
+  };
 
   const handleToggleExpand = useCallback(
     async (row: any) => {
@@ -235,8 +252,10 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
     getExpandedRowModel: getExpandedRowModel(),
     onSortingChange: setSorting,
     onExpandedChange: setExpanded,
-    state: { sorting, expanded },
-    initialState: { pagination: { pageSize: 15 } },
+    onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
+      q: globalFilter, tienda: selectedTiendas,
+    })),
+    state: { sorting, expanded, pagination },
     getRowCanExpand: () => true,
   });
 
@@ -245,9 +264,9 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#41454d]" />
-          <Input placeholder="Buscar por código, modelo..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-9 border-[#dddddd]" />
+          <Input placeholder="Buscar por código, modelo..." value={globalFilter} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 border-[#dddddd]" />
         </div>
-        {tiendas.length > 0 && <MultiFilter title="Tiendas" options={tiendas} selected={selectedTiendas} onChange={setSelectedTiendas} />}
+        {tiendas.length > 0 && <MultiFilter title="Tiendas" options={tiendas} selected={selectedTiendas} onChange={handleTiendasChange} />}
         <div className="flex items-center gap-2 ml-auto">
           <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={loadingExcel || filteredData.length === 0} className="border-[#dddddd] gap-1.5">
             {loadingExcel ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}

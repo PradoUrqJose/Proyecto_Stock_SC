@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { turso } from "@/lib/turso";
 import { ActualizacionUpdatesTable } from "@/components/admin/actualizacion-updates-table";
 import type { Metadata } from "next";
@@ -90,11 +91,13 @@ export default async function AdminActualizacionUpdatesPage() {
           Productos con descuentos actualizados.
         </p>
       </div>
-      <ActualizacionUpdatesTable
-        data={updates}
-        tiendas={tiendas}
-        productoTiendas={productoTiendas}
-      />
+      <Suspense fallback={null}>
+        <ActualizacionUpdatesTable
+          data={updates}
+          tiendas={tiendas}
+          productoTiendas={productoTiendas}
+        />
+      </Suspense>
     </div>
   );
 }

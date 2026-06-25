@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { turso } from "@/lib/turso";
 import { ProductsTable } from "@/components/admin/products-table";
 import type { Metadata } from "next";
@@ -45,13 +46,15 @@ export default async function AdminProductosPage() {
           {productos.length} productos en inventario
         </p>
       </div>
-      <ProductsTable
-        data={productos}
-        categorias={categorias}
-        grupos={grupos}
-        marcas={marcas}
-        descuentos={descuentos}
-      />
+      <Suspense fallback={null}>
+        <ProductsTable
+          data={productos}
+          categorias={categorias}
+          grupos={grupos}
+          marcas={marcas}
+          descuentos={descuentos}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
 import {
   useReactTable,
@@ -79,10 +80,26 @@ export function RepositionClientTable({
   tiendaStock,
   tiendaAsignada,
 }: RepositionClientTableProps) {
+  const { get, getPage, sync, makePaginationHandler } = useTableUrlState();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [selectedTienda, setSelectedTienda] = useState<string>(tiendaAsignada ?? "all");
+  const [globalFilter, setGlobalFilter] = useState(() => get("q"));
+  const [selectedTienda, setSelectedTienda] = useState<string>(() => tiendaAsignada ?? (get("tienda") || "all"));
+  const [pagination, setPagination] = useState(() => ({ pageIndex: getPage(), pageSize: 15 }));
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const snap = (overrides: Record<string, string | number | null> = {}) =>
+    sync({ q: globalFilter, tienda: selectedTienda === "all" ? null : selectedTienda, page: pagination.pageIndex + 1, ...overrides });
+
+  const handleSearchChange = (value: string) => {
+    setGlobalFilter(value);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ q: value, page: 1 });
+  };
+  const handleTiendaChange = (value: string) => {
+    setSelectedTienda(value);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ tienda: value === "all" ? null : value, page: 1 });
+  };
 
   const filteredData = useMemo(() => {
     let result = [...data];
@@ -217,8 +234,10 @@ export function RepositionClientTable({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
-    state: { sorting },
-    initialState: { pagination: { pageSize: 15 } },
+    onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
+      q: globalFilter, tienda: selectedTienda === "all" ? null : selectedTienda,
+    })),
+    state: { sorting, pagination },
   });
 
   return (
@@ -229,12 +248,12 @@ export function RepositionClientTable({
           <Input
             placeholder="Buscar por código, marca, modelo..."
             value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 border-[#dddddd]"
           />
         </div>
         {!tiendaAsignada && (
-          <Select value={selectedTienda} onValueChange={(v) => setSelectedTienda(v ?? "all")}>
+          <Select value={selectedTienda} onValueChange={(v) => handleTiendaChange(v ?? "all")}>
             <SelectTrigger className="w-[180px] border-[#dddddd]">
               <SelectValue placeholder="Tienda" />
             </SelectTrigger>

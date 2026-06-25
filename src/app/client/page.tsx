@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { turso } from "@/lib/turso";
 import { ClientTable } from "@/components/client/client-table";
 import type { Metadata } from "next";
@@ -44,13 +45,15 @@ export default async function ClientPage() {
           {productos.length} productos disponibles
         </p>
       </div>
-      <ClientTable
-        data={productos}
-        categorias={categorias}
-        grupos={grupos}
-        marcas={marcas}
-        descuentos={descuentos}
-      />
+      <Suspense fallback={null}>
+        <ClientTable
+          data={productos}
+          categorias={categorias}
+          grupos={grupos}
+          marcas={marcas}
+          descuentos={descuentos}
+        />
+      </Suspense>
     </div>
   );
 }

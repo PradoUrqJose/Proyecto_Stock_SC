@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import { RepositionClientTable } from "@/components/client/reposicion-client-table";
@@ -149,12 +150,14 @@ export default async function ClientReposicionPage() {
           {tiendaFiltro ? ` · ${tiendaFiltro}` : ""}.
         </p>
       </div>
-      <RepositionClientTable
-        data={productos}
-        tiendas={tiendas}
-        tiendaStock={tiendaStock}
-        tiendaAsignada={tiendaFiltro}
-      />
+      <Suspense fallback={null}>
+        <RepositionClientTable
+          data={productos}
+          tiendas={tiendas}
+          tiendaStock={tiendaStock}
+          tiendaAsignada={tiendaFiltro}
+        />
+      </Suspense>
     </div>
   );
 }

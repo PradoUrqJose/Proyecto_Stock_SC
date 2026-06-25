@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import {
   useReactTable,
   getCoreRowModel,
+  getPaginationRowModel,
   flexRender,
   type ColumnDef,
 } from "@tanstack/react-table";
@@ -27,6 +29,8 @@ import {
   Send,
   Square,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -42,6 +46,8 @@ import { getDiscountColor } from "@/lib/discount-colors";
 import { exportReposicionToExcel } from "@/lib/export-reposicion-excel";
 
 export function ReposicionTable() {
+  const { getPage, makePaginationHandler } = useTableUrlState();
+  const [pagination, setPagination] = useState(() => ({ pageIndex: getPage(), pageSize: 15 }));
   const [items, setItems] = useState<ReposicionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -233,6 +239,9 @@ export function ReposicionTable() {
     data: items,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({})),
+    state: { pagination },
   });
 
   if (checking) {
@@ -380,6 +389,24 @@ export function ReposicionTable() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-[#41454d]">
+              Mostrando {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} a{" "}
+              {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} de {table.getFilteredRowModel().rows.length} productos
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="border-[#dddddd]">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-[#333840]">
+                Pagina {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="border-[#dddddd]">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </>

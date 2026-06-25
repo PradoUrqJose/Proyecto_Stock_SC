@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, flexRender, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,14 +52,45 @@ function isValidImageUrl(url: string | null): boolean {
 }
 
 export function ClientTable({ data, categorias, grupos, marcas, descuentos }: ClientTableProps) {
+  const { get, getAll, getPage, sync, makePaginationHandler } = useTableUrlState();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [filterCategoria, setFilterCategoria] = useState<string[]>([]);
-  const [filterGrupo, setFilterGrupo] = useState<string[]>([]);
-  const [filterMarca, setFilterMarca] = useState<string[]>([]);
-  const [filterDescuento, setFilterDescuento] = useState<string[]>([]);
+  const [globalFilter, setGlobalFilter] = useState(() => get("q"));
+  const [filterCategoria, setFilterCategoria] = useState<string[]>(() => getAll("cat"));
+  const [filterGrupo, setFilterGrupo] = useState<string[]>(() => getAll("grupo"));
+  const [filterMarca, setFilterMarca] = useState<string[]>(() => getAll("marca"));
+  const [filterDescuento, setFilterDescuento] = useState<string[]>(() => getAll("desc"));
+  const [pagination, setPagination] = useState(() => ({ pageIndex: getPage(), pageSize: 15 }));
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const snap = (overrides: Record<string, string | string[] | number> = {}) =>
+    sync({ q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento, page: pagination.pageIndex + 1, ...overrides });
+
+  const handleSearchChange = (value: string) => {
+    setGlobalFilter(value);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ q: value, page: 1 });
+  };
+  const handleCategoriaChange = (values: string[]) => {
+    setFilterCategoria(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ cat: values, page: 1 });
+  };
+  const handleGrupoChange = (values: string[]) => {
+    setFilterGrupo(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ grupo: values, page: 1 });
+  };
+  const handleMarcaChange = (values: string[]) => {
+    setFilterMarca(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ marca: values, page: 1 });
+  };
+  const handleDescuentoChange = (values: string[]) => {
+    setFilterDescuento(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ desc: values, page: 1 });
+  };
 
   const filteredData = useMemo(() => {
     let result = [...data];
@@ -172,8 +204,10 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
-    state: { sorting },
-    initialState: { pagination: { pageSize: 15 } },
+    onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
+      q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento,
+    })),
+    state: { sorting, pagination },
   });
 
   return (
@@ -181,13 +215,13 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#41454d]" />
-          <Input placeholder="Buscar por codigo, marca, modelo..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-9 border-[#dddddd]" />
+          <Input placeholder="Buscar por codigo, marca, modelo..." value={globalFilter} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 border-[#dddddd]" />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <MultiFilter title="Categoria" options={categorias} selected={filterCategoria} onChange={setFilterCategoria} />
-          <MultiFilter title="Grupo" options={grupos} selected={filterGrupo} onChange={setFilterGrupo} />
-          <MultiFilter title="Marca" options={marcas} selected={filterMarca} onChange={setFilterMarca} />
-          <MultiFilter title="Descuento" options={descuentos} selected={filterDescuento} onChange={setFilterDescuento} />
+          <MultiFilter title="Categoria" options={categorias} selected={filterCategoria} onChange={handleCategoriaChange} />
+          <MultiFilter title="Grupo" options={grupos} selected={filterGrupo} onChange={handleGrupoChange} />
+          <MultiFilter title="Marca" options={marcas} selected={filterMarca} onChange={handleMarcaChange} />
+          <MultiFilter title="Descuento" options={descuentos} selected={filterDescuento} onChange={handleDescuentoChange} />
           <Button
             variant="outline"
             size="sm"

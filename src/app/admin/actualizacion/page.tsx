@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { turso } from "@/lib/turso";
 import { ActualizacionTable } from "@/components/admin/actualizacion-table";
 import type { Metadata } from "next";
@@ -42,7 +43,9 @@ export default async function AdminActualizacionPage() {
           Modifica los descuentos de los productos. Los cambios se guardan localmente hasta presionar Guardar.
         </p>
       </div>
-      <ActualizacionTable data={productos} descuentos={descuentos} />
+      <Suspense fallback={null}>
+        <ActualizacionTable data={productos} descuentos={descuentos} />
+      </Suspense>
     </div>
   );
 }

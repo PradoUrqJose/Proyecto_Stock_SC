@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, flexRender, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -50,18 +51,62 @@ function formatPrice(value: number): string {
 
 export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: ProductsTableProps) {
   const router = useRouter();
+  const { get, getAll, getPage, sync, makePaginationHandler } = useTableUrlState();
+
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [filterCategoria, setFilterCategoria] = useState<string[]>([]);
-  const [filterGrupo, setFilterGrupo] = useState<string[]>([]);
-  const [filterMarca, setFilterMarca] = useState<string[]>([]);
-  const [filterDescuento, setFilterDescuento] = useState<string[]>([]);
+  const [globalFilter, setGlobalFilter] = useState(() => get("q"));
+  const [filterCategoria, setFilterCategoria] = useState<string[]>(() => getAll("cat"));
+  const [filterGrupo, setFilterGrupo] = useState<string[]>(() => getAll("grupo"));
+  const [filterMarca, setFilterMarca] = useState<string[]>(() => getAll("marca"));
+  const [filterDescuento, setFilterDescuento] = useState<string[]>(() => getAll("desc"));
+  const [pagination, setPagination] = useState(() => ({
+    pageIndex: getPage(),
+    pageSize: 15,
+  }));
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [savingImage, setSavingImage] = useState(false);
+
+  // Builds a full URL snapshot from current state + any overrides
+  const snap = (overrides: Record<string, string | string[] | number> = {}) =>
+    sync({
+      q: globalFilter,
+      cat: filterCategoria,
+      grupo: filterGrupo,
+      marca: filterMarca,
+      desc: filterDescuento,
+      page: pagination.pageIndex + 1,
+      ...overrides,
+    });
+
+  const handleSearchChange = (value: string) => {
+    setGlobalFilter(value);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ q: value, page: 1 });
+  };
+  const handleCategoriaChange = (values: string[]) => {
+    setFilterCategoria(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ cat: values, page: 1 });
+  };
+  const handleGrupoChange = (values: string[]) => {
+    setFilterGrupo(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ grupo: values, page: 1 });
+  };
+  const handleMarcaChange = (values: string[]) => {
+    setFilterMarca(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ marca: values, page: 1 });
+  };
+  const handleDescuentoChange = (values: string[]) => {
+    setFilterDescuento(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ desc: values, page: 1 });
+  };
 
   const handleSaveImage = async () => {
     if (!editingImage || !imageUrlInput.trim()) return;
@@ -151,7 +196,7 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
               {validUrl ? (
                 <Image src={url} alt={row.original.modelo} fill className="object-cover" loading="lazy" sizes="40px" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]">
+                <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]" title="Agregar imagen">
                   <Camera className="h-4 w-4 text-[#9297a0]" />
                 </div>
               )}
@@ -222,8 +267,10 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
-    state: { sorting },
-    initialState: { pagination: { pageSize: 15 } },
+    onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
+      q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento,
+    })),
+    state: { sorting, pagination },
   });
 
   return (
@@ -232,12 +279,12 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
         <div className="flex items-center gap-2 flex-1 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#41454d]" />
-            <Input placeholder="Buscar por codigo, marca, modelo..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-9 border-[#dddddd]" />
+            <Input placeholder="Buscar por codigo, marca, modelo..." value={globalFilter} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 border-[#dddddd]" />
           </div>
-          <MultiFilter title="Categoria" options={categorias} selected={filterCategoria} onChange={setFilterCategoria} />
-          <MultiFilter title="Grupo" options={grupos} selected={filterGrupo} onChange={setFilterGrupo} />
-          <MultiFilter title="Marca" options={marcas} selected={filterMarca} onChange={setFilterMarca} />
-          <MultiFilter title="Descuento" options={descuentos} selected={filterDescuento} onChange={setFilterDescuento} />
+          <MultiFilter title="Categoria" options={categorias} selected={filterCategoria} onChange={handleCategoriaChange} />
+          <MultiFilter title="Grupo" options={grupos} selected={filterGrupo} onChange={handleGrupoChange} />
+          <MultiFilter title="Marca" options={marcas} selected={filterMarca} onChange={handleMarcaChange} />
+          <MultiFilter title="Descuento" options={descuentos} selected={filterDescuento} onChange={handleDescuentoChange} />
         </div>
         <Button onClick={() => setShowUploadModal(true)} className="bg-[#1b61c9] hover:bg-[#1a3866] text-white">
           <Upload className="mr-2 h-4 w-4" />
@@ -343,8 +390,17 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Agregar imagen</DialogTitle>
-            <DialogDescription>
-              Código: <span className="font-mono">{editingImage}</span>
+            <DialogDescription className="flex items-center gap-1.5">
+              Código:{" "}
+              <a
+                href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(editingImage ?? "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-mono text-[#1b61c9] hover:text-[#1a3866] underline underline-offset-2 decoration-dotted hover:decoration-solid transition-colors"
+              >
+                {editingImage}
+                <Search className="h-3 w-3 opacity-60" />
+              </a>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

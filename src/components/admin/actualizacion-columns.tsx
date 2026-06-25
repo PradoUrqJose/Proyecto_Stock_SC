@@ -54,7 +54,7 @@ export function getColumns(
                 sizes="40px"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]">
+              <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0] hover:bg-[#e5e7eb]" title="Agregar imagen">
                 <Camera className="h-4 w-4 text-[#9297a0]" />
               </div>
             )}

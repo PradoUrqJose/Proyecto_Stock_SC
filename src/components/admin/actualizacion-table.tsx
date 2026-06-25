@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
 import {
   useReactTable,
@@ -55,6 +56,7 @@ interface ActualizacionTableProps {
 
 export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps) {
   const router = useRouter();
+  const { get, getAll, getPage, getBool, sync, makePaginationHandler } = useTableUrlState();
   const {
     pending,
     pendingCount,
@@ -66,16 +68,16 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
   const { exporting, handleExport } = useDiscountExport();
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
+  const [pagination, setPagination] = useState<PaginationState>(() => ({
+    pageIndex: getPage(),
     pageSize: 15,
-  });
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [filterCategoria, setFilterCategoria] = useState<string[]>([]);
-  const [filterGrupo, setFilterGrupo] = useState<string[]>([]);
-  const [filterMarca, setFilterMarca] = useState<string[]>([]);
-  const [filterDescuento, setFilterDescuento] = useState<string[]>([]);
-  const [filterDescNuevo, setFilterDescNuevo] = useState(false);
+  }));
+  const [globalFilter, setGlobalFilter] = useState(() => get("q"));
+  const [filterCategoria, setFilterCategoria] = useState<string[]>(() => getAll("cat"));
+  const [filterGrupo, setFilterGrupo] = useState<string[]>(() => getAll("grupo"));
+  const [filterMarca, setFilterMarca] = useState<string[]>(() => getAll("marca"));
+  const [filterDescuento, setFilterDescuento] = useState<string[]>(() => getAll("desc"));
+  const [filterDescNuevo, setFilterDescNuevo] = useState(() => getBool("descNuevo"));
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState("");
@@ -84,27 +86,57 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
 
   type Row = Producto & { descuentoN: number | null };
 
-  const prevFiltersRef = useRef({ globalFilter, filterCategoria, filterGrupo, filterMarca, filterDescuento, filterDescNuevo });
-  useEffect(() => {
-    const prev = prevFiltersRef.current;
-    if (
-      prev.globalFilter !== globalFilter ||
-      prev.filterCategoria !== filterCategoria ||
-      prev.filterGrupo !== filterGrupo ||
-      prev.filterMarca !== filterMarca ||
-      prev.filterDescuento !== filterDescuento ||
-      prev.filterDescNuevo !== filterDescNuevo
-    ) {
-      setPagination((p) => ({ ...p, pageIndex: 0 }));
-      prevFiltersRef.current = { globalFilter, filterCategoria, filterGrupo, filterMarca, filterDescuento, filterDescNuevo };
-    }
-  }, [globalFilter, filterCategoria, filterGrupo, filterMarca, filterDescuento, filterDescNuevo]);
+  const snap = (overrides: Record<string, string | string[] | number | boolean | null> = {}) =>
+    sync({
+      q: globalFilter,
+      cat: filterCategoria,
+      grupo: filterGrupo,
+      marca: filterMarca,
+      desc: filterDescuento,
+      descNuevo: filterDescNuevo,
+      page: pagination.pageIndex + 1,
+      ...overrides,
+    });
+
+  const handleSearchChange = (value: string) => {
+    setGlobalFilter(value);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ q: value, page: 1 });
+  };
+  const handleCategoriaChange = (values: string[]) => {
+    setFilterCategoria(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ cat: values, page: 1 });
+  };
+  const handleGrupoChange = (values: string[]) => {
+    setFilterGrupo(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ grupo: values, page: 1 });
+  };
+  const handleMarcaChange = (values: string[]) => {
+    setFilterMarca(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ marca: values, page: 1 });
+  };
+  const handleDescuentoChange = (values: string[]) => {
+    setFilterDescuento(values);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ desc: values, page: 1 });
+  };
+  const handleDescNuevoToggle = () => {
+    const next = !filterDescNuevo;
+    setFilterDescNuevo(next);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    snap({ descNuevo: next, page: 1 });
+  };
 
   useEffect(() => {
     if (pendingCount === 0 && filterDescNuevo) {
       setFilterDescNuevo(false);
+      sync({ q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento, descNuevo: false, page: pagination.pageIndex + 1 });
     }
-  }, [pendingCount, filterDescNuevo]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCount]);
 
   useEffect(() => {
     setImageUrlInput("");
@@ -217,7 +249,9 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
     getFilteredRowModel: getFilteredRowModel(),
     autoResetPageIndex: false,
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
+      q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento, descNuevo: filterDescNuevo,
+    })),
     state: { sorting, pagination },
     pageCount: Math.ceil(filteredData.length / 15),
   });
@@ -241,7 +275,7 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
             <Input
               placeholder="Buscar por codigo, marca, modelo..."
               value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9 border-[#dddddd]"
             />
           </div>
@@ -249,31 +283,31 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
             title="Categoria"
             options={categorias}
             selected={filterCategoria}
-            onChange={setFilterCategoria}
+            onChange={handleCategoriaChange}
           />
           <MultiFilter
             title="Grupo"
             options={grupos}
             selected={filterGrupo}
-            onChange={setFilterGrupo}
+            onChange={handleGrupoChange}
           />
           <MultiFilter
             title="Marca"
             options={marcas}
             selected={filterMarca}
-            onChange={setFilterMarca}
+            onChange={handleMarcaChange}
           />
           <MultiFilter
             title="Descuento"
             options={descuentos}
             selected={filterDescuento}
-            onChange={setFilterDescuento}
+            onChange={handleDescuentoChange}
           />
           <Button
             variant={filterDescNuevo ? "default" : "outline"}
             size="sm"
             disabled={pendingCount === 0}
-            onClick={() => setFilterDescNuevo(!filterDescNuevo)}
+            onClick={handleDescNuevoToggle}
             className={`whitespace-nowrap ${
               filterDescNuevo
                 ? "bg-[#f97316] hover:bg-[#ea580c] text-white"
@@ -419,8 +453,17 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Agregar imagen</DialogTitle>
-            <DialogDescription>
-              Código: <span className="font-mono">{editingImage}</span>
+            <DialogDescription className="flex items-center gap-1.5">
+              Código:{" "}
+              <a
+                href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(editingImage ?? "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-mono text-[#1b61c9] hover:text-[#1a3866] underline underline-offset-2 decoration-dotted hover:decoration-solid transition-colors"
+              >
+                {editingImage}
+                <Search className="h-3 w-3 opacity-60" />
+              </a>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

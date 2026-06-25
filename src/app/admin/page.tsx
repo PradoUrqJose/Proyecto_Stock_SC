@@ -12,9 +12,10 @@ export default async function AdminDashboardPage() {
   let valorTotal = 0;
   let totalVars = 0;
   let descuentoData: { name: string; value: number; descuento: number }[] = [];
+  let ultimaSync = "";
 
   try {
-    const [totalProducts, stockByMarca, valorInventario, totalVariantes, descuentoDist] =
+    const [totalProducts, stockByMarca, valorInventario, totalVariantes, descuentoDist, syncResult] =
       await Promise.all([
         turso.execute(
           "SELECT COUNT(*) as total FROM productos WHERE imagen_url IS NOT NULL"
@@ -29,7 +30,13 @@ export default async function AdminDashboardPage() {
         turso.execute(
           "SELECT descuento, COUNT(*) as total FROM productos GROUP BY descuento ORDER BY descuento"
         ),
+        turso.execute({
+          sql: "SELECT valor FROM metadata WHERE clave = ?",
+          args: ["ultima_sync"],
+        }),
       ]);
+
+    ultimaSync = (syncResult.rows[0]?.valor as string) || "";
 
     productsWithImage = totalProducts.rows[0]?.total as number || 0;
     valorTotal = valorInventario.rows[0]?.valor_total as number || 0;
@@ -58,6 +65,11 @@ export default async function AdminDashboardPage() {
         <p className="text-sm text-[#41454d] mt-1">
           Resumen del inventario actual
         </p>
+        {ultimaSync && (
+          <p className="text-xs text-[#9297a0] mt-1.5">
+            Última actualización: {ultimaSync}
+          </p>
+        )}
       </div>
       <DashboardCards
         productsWithImage={productsWithImage}

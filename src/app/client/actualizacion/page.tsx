@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import { ActualizacionClientTable } from "@/components/client/actualizacion-client-table";
@@ -143,13 +144,15 @@ export default async function ClientActualizacionPage() {
           {tiendaFiltro ? ` · ${tiendaFiltro}` : ""}.
         </p>
       </div>
-      <ActualizacionClientTable
-        data={productos}
-        descuentosAnteriores={descuentosAnteriores}
-        tiendas={tiendas}
-        tiendaStock={tiendaStock}
-        tiendaAsignada={tiendaFiltro}
-      />
+      <Suspense fallback={null}>
+        <ActualizacionClientTable
+          data={productos}
+          descuentosAnteriores={descuentosAnteriores}
+          tiendas={tiendas}
+          tiendaStock={tiendaStock}
+          tiendaAsignada={tiendaFiltro}
+        />
+      </Suspense>
     </div>
   );
 }
