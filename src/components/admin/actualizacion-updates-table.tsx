@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, ArrowUpDown, X, Package, ArrowDown, ArrowUp, Loader2, FileSpreadsheet, FileArchive } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, ArrowUpDown, X, Package, ArrowDown, ArrowUp, Loader2, FileSpreadsheet, FileArchive, Square } from "lucide-react";
 import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 import { getVariantesByProducto } from "@/lib/actions/products";
 import { exportUpdatesExcel } from "@/lib/actions/export";
 import { exportUpdatesZip } from "@/lib/export-updates-zip";
+import { detenerActualizacion } from "@/lib/actions/discounts";
 import { MultiFilter } from "@/components/multi-filter";
+import { toast } from "sonner";
 import type { VarianteRow } from "@/types";
 
 interface UpdateRow {
@@ -33,6 +35,7 @@ interface Props {
   data: UpdateRow[];
   tiendas: string[];
   productoTiendas: Record<string, string[]>;
+  isActive: boolean;
 }
 
 function formatPrice(value: number): string {
@@ -45,7 +48,7 @@ function formatPrice(value: number): string {
 
 type SubSortKey = keyof VarianteRow;
 
-export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Props) {
+export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas, isActive }: Props) {
   const { get, getAll, getPage, sync, makePaginationHandler } = useTableUrlState();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState(() => get("q"));
@@ -58,6 +61,8 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [loadingZip, setLoadingZip] = useState(false);
+  const [active, setActive] = useState(isActive);
+  const [closing, setClosing] = useState(false);
 
   const filteredData = useMemo(() => {
     let result = data;
@@ -156,6 +161,23 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
       setLoadingZip(false);
     }
   }, [filteredData]);
+
+  const handleCloseUpdate = useCallback(async () => {
+    setClosing(true);
+    try {
+      const result = await detenerActualizacion();
+      if (result.success) {
+        toast.success(result.msg);
+        setActive(false);
+      } else {
+        toast.error(result.msg);
+      }
+    } catch {
+      toast.error("Error al cerrar actualización.");
+    } finally {
+      setClosing(false);
+    }
+  }, []);
 
   const columns: ColumnDef<UpdateRow>[] = useMemo(
     () => [
@@ -268,6 +290,12 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas }: Pr
         </div>
         {tiendas.length > 0 && <MultiFilter title="Tiendas" options={tiendas} selected={selectedTiendas} onChange={handleTiendasChange} />}
         <div className="flex items-center gap-2 ml-auto">
+          {active && (
+            <Button variant="outline" size="sm" onClick={handleCloseUpdate} disabled={closing} className="border-[#dc2626] text-[#dc2626] hover:text-[#dc2626] hover:bg-[#dc2626]/10 gap-1.5">
+              {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
+              Cerrar Actualización
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={loadingExcel || filteredData.length === 0} className="border-[#dddddd] gap-1.5">
             {loadingExcel ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
             Exportar Excel

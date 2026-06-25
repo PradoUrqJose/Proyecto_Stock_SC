@@ -90,3 +90,53 @@ export async function guardarDescuentos(
     return { success: false, msg };
   }
 }
+
+export async function detenerActualizacion(): Promise<ActionResult> {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "admin") {
+      return { success: false, msg: "No autorizado." };
+    }
+
+    await turso.execute(`CREATE TABLE IF NOT EXISTS descuento_updates_historial (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ciclo_id TEXT NOT NULL,
+      cod_universal TEXT NOT NULL,
+      genero TEXT NOT NULL,
+      bf_descuento REAL NOT NULL,
+      af_descuento REAL NOT NULL,
+      just_updated TEXT NOT NULL,
+      cerrado_en TEXT NOT NULL
+    )`);
+
+    const currentUpdates = await turso.execute("SELECT * FROM descuento_updates");
+    const cerradoEn = new Date().toLocaleString("es-PE");
+
+    if (currentUpdates.rows.length > 0) {
+      const cicloId = crypto.randomUUID();
+      const historialInserts = currentUpdates.rows.map((row) => ({
+        sql: `INSERT INTO descuento_updates_historial (ciclo_id, cod_universal, genero, bf_descuento, af_descuento, just_updated, cerrado_en)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [cicloId, row.cod_universal, row.genero, row.bf_descuento, row.af_descuento, row.just_updated, cerradoEn] as InValue[],
+      }));
+      for (let i = 0; i < historialInserts.length; i += 2000) {
+        await turso.batch(historialInserts.slice(i, i + 2000), "write");
+      }
+    }
+
+    await turso.execute("DELETE FROM descuento_updates");
+
+    await turso.execute({
+      sql: "INSERT OR REPLACE INTO metadata VALUES (?, ?)",
+      args: ["actualizacion_activa", "false"],
+    });
+
+    revalidatePath("/admin/actualizacion-updates");
+    revalidatePath("/client/actualizacion");
+
+    return { success: true, msg: "Actualización cerrada. Los registros se guardaron en el historial." };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { success: false, msg };
+  }
+}

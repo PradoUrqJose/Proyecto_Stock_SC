@@ -20,6 +20,12 @@ interface UpdateRow {
 }
 
 export default async function AdminActualizacionUpdatesPage() {
+  const activaResult = await turso.execute({
+    sql: "SELECT valor FROM metadata WHERE clave = ?",
+    args: ["actualizacion_activa"],
+  });
+  const isActive = activaResult.rows[0]?.valor === "true";
+
   const updatesResult = await turso.execute(
     `SELECT u.cod_universal, u.genero, u.bf_descuento, u.af_descuento, u.just_updated,
             p.grupo, p.modelo, p.precio_lista,
@@ -96,6 +102,7 @@ export default async function AdminActualizacionUpdatesPage() {
           data={updates}
           tiendas={tiendas}
           productoTiendas={productoTiendas}
+          isActive={isActive}
         />
       </Suspense>
     </div>

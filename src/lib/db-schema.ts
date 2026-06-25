@@ -66,6 +66,16 @@ export async function initDatabase() {
     `CREATE TABLE IF NOT EXISTS remove_discount (
       cod_universal TEXT PRIMARY KEY
     );`,
+    `CREATE TABLE IF NOT EXISTS descuento_updates_historial (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ciclo_id TEXT NOT NULL,
+      cod_universal TEXT NOT NULL,
+      genero TEXT NOT NULL,
+      bf_descuento REAL NOT NULL,
+      af_descuento REAL NOT NULL,
+      just_updated TEXT NOT NULL,
+      cerrado_en TEXT NOT NULL
+    );`,
   ], "write");
 
 // ── Migrations ─────────────────────────────────────────────
@@ -102,6 +112,13 @@ export async function initDatabase() {
         args: [username, row.id as string],
       });
     }
+  }
+
+  // Migración: agregar cerrado_en a descuento_updates_historial si no existe
+  const historialColumns = await turso.execute("PRAGMA table_info(descuento_updates_historial)");
+  const hasCerradoEn = historialColumns.rows.some((r) => r.name === "cerrado_en");
+  if (!hasCerradoEn) {
+    await turso.execute("ALTER TABLE descuento_updates_historial ADD COLUMN cerrado_en TEXT NOT NULL DEFAULT ''");
   }
 
 // ── Seed ───────────────────────────────────────────────────
