@@ -3,42 +3,14 @@
 import { useState, useMemo } from "react";
 import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
-import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  flexRender,
-  type ColumnDef,
-  type SortingState,
-} from "@tanstack/react-table";
+import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  ArrowUpDown,
-  X,
-  Package,
-  ArrowRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, ArrowUpDown, X, Package, ArrowRight } from "lucide-react";
 import { getDiscountColor, getDiscountTextClass } from "@/lib/discount-colors";
 
 interface ProductoActualizacion {
@@ -72,13 +44,7 @@ function formatPrice(value: number): string {
   }).format(value);
 }
 
-export function ActualizacionClientTable({
-  data,
-  descuentosAnteriores,
-  tiendas,
-  tiendaStock,
-  tiendaAsignada,
-}: ActualizacionClientTableProps) {
+export function ActualizacionClientTable({ data, descuentosAnteriores, tiendas, tiendaStock, tiendaAsignada }: ActualizacionClientTableProps) {
   const { get, getPage, sync, makePaginationHandler } = useTableUrlState();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState(() => get("q"));
@@ -91,12 +57,12 @@ export function ActualizacionClientTable({
 
   const handleSearchChange = (value: string) => {
     setGlobalFilter(value);
-    setPagination(p => ({ ...p, pageIndex: 0 }));
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
     snap({ q: value, page: 1 });
   };
   const handleTiendaChange = (value: string) => {
     setSelectedTienda(value);
-    setPagination(p => ({ ...p, pageIndex: 0 }));
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
     snap({ tienda: value === "all" ? null : value, page: 1 });
   };
 
@@ -106,11 +72,7 @@ export function ActualizacionClientTable({
     if (globalFilter) {
       const search = globalFilter.toLowerCase();
       result = result.filter(
-        (p) =>
-          p.cod_universal.toLowerCase().includes(search) ||
-          p.marca.toLowerCase().includes(search) ||
-          p.modelo.toLowerCase().includes(search) ||
-          p.color.toLowerCase().includes(search)
+        (p) => p.cod_universal.toLowerCase().includes(search) || p.marca.toLowerCase().includes(search) || p.modelo.toLowerCase().includes(search) || p.color.toLowerCase().includes(search),
       );
     }
 
@@ -131,8 +93,7 @@ export function ActualizacionClientTable({
         header: "Imagen",
         cell: ({ row }) => {
           const url = row.original.imagen_url;
-          const validUrl =
-            url && (url.startsWith("http://") || url.startsWith("https://"));
+          const validUrl = url && (url.startsWith("http://") || url.startsWith("https://"));
           return (
             <div
               className="w-12 h-12 relative rounded-md overflow-hidden bg-[#f8fafc] cursor-pointer hover:ring-2 hover:ring-[#1b61c9] transition-all"
@@ -142,14 +103,7 @@ export function ActualizacionClientTable({
               }}
             >
               {validUrl ? (
-                <Image
-                  src={url}
-                  alt={row.original.modelo}
-                  fill
-                  className="object-cover"
-                  loading="lazy"
-                  sizes="48px"
-                />
+                <Image src={url} alt={row.original.modelo} fill className="object-cover" loading="lazy" sizes="48px" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#f0f0f0]">
                   <Package className="h-5 w-5 text-[#9297a0]" />
@@ -162,11 +116,7 @@ export function ActualizacionClientTable({
       {
         accessorKey: "cod_universal",
         header: "Cod. Universal",
-        cell: ({ row }) => (
-          <span className="font-mono text-xs">
-            {row.getValue("cod_universal")}
-          </span>
-        ),
+        cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("cod_universal")}</span>,
       },
       {
         accessorKey: "marca",
@@ -184,75 +134,43 @@ export function ActualizacionClientTable({
       { accessorKey: "color", header: "Color" },
       {
         id: "descuento_anterior",
-        header: "Desc. Anterior",
+        header: "Desc. Antes",
         cell: ({ row }) => {
           const key = `${row.original.cod_universal}-${row.original.genero}`;
           const descAnt = descuentosAnteriores[key];
           if (descAnt === undefined) return <span className="text-[#41454d]">-</span>;
-          return descAnt > 0 ? (
-            <Badge className={`${getDiscountColor(descAnt)} ${getDiscountTextClass(descAnt)} text-[13px]`}>
-              {descAnt}%
-            </Badge>
-          ) : (
-            <span className="text-[#41454d]">0%</span>
-          );
+          return descAnt > 0 ? <Badge className={`${getDiscountColor(descAnt)} ${getDiscountTextClass(descAnt)} text-[13px]`}>{descAnt}%</Badge> : <span className="text-[#41454d]">0%</span>;
         },
       },
       {
         id: "cambio",
         header: "",
-        cell: () => (
-          <ArrowRight className="h-4 w-4 text-[#9297a0]" />
-        ),
+        cell: () => <ArrowRight className="h-4 w-4 text-[#9297a0]" />,
       },
       {
         accessorKey: "descuento",
         header: "Desc. Actual",
         cell: ({ row }) => {
           const desc = row.getValue("descuento") as number;
-          return desc > 0 ? (
-            <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>
-              {desc}%
-            </Badge>
-          ) : (
-            <span className="text-[#41454d]">0%</span>
-          );
+          return desc > 0 ? <Badge className={`${getDiscountColor(desc)} ${getDiscountTextClass(desc)} text-[13px]`}>{desc}%</Badge> : <span className="text-[#41454d]">0%</span>;
         },
       },
       {
         accessorKey: "precio_lista",
         header: "P. Lista",
-        cell: ({ row }) => (
-          <span className="font-medium">
-            {formatPrice(row.getValue("precio_lista") as number)}
-          </span>
-        ),
+        cell: ({ row }) => <span className="font-medium">{formatPrice(row.getValue("precio_lista") as number)}</span>,
       },
       {
         accessorKey: "precio_final",
         header: "P. Final",
-        cell: ({ row }) => (
-          <span className="font-medium">
-            {formatPrice(row.getValue("precio_final") as number)}
-          </span>
-        ),
+        cell: ({ row }) => <span className="font-medium">{formatPrice(row.getValue("precio_final") as number)}</span>,
       },
       {
         accessorKey: "stock_total",
         header: "Stock",
         cell: ({ row }) => {
           const stock = row.getValue("stock_total") as number;
-          return (
-            <span
-              className={
-                stock === 0
-                  ? "text-[#dc2626] font-medium"
-                  : "font-medium"
-              }
-            >
-              {stock}
-            </span>
-          );
+          return <span className={stock === 0 ? "text-[#dc2626] font-medium" : "font-medium"}>{stock}</span>;
         },
       },
       ...(selectedTienda !== "all"
@@ -260,30 +178,16 @@ export function ActualizacionClientTable({
             {
               id: "stock_tienda",
               header: `Stock ${selectedTienda}`,
-              cell: ({
-                row,
-              }: {
-                row: { original: ProductoActualizacion };
-              }) => {
+              cell: ({ row }: { row: { original: ProductoActualizacion } }) => {
                 const key = `${row.original.cod_universal}-${row.original.genero}-${selectedTienda}`;
                 const stock = tiendaStock[key] ?? 0;
-                return (
-                  <span
-                    className={
-                      stock === 0
-                        ? "text-[#dc2626] font-medium"
-                        : "font-medium"
-                    }
-                  >
-                    {stock}
-                  </span>
-                );
+                return <span className={stock === 0 ? "text-[#dc2626] font-medium" : "font-medium"}>{stock}</span>;
               },
             } as ColumnDef<ProductoActualizacion>,
           ]
         : []),
     ],
-    [selectedTienda, tiendaStock, descuentosAnteriores]
+    [selectedTienda, tiendaStock, descuentosAnteriores],
   );
 
   const table = useReactTable({
@@ -293,7 +197,8 @@ export function ActualizacionClientTable({
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
-      q: globalFilter, tienda: selectedTienda === "all" ? null : selectedTienda,
+      q: globalFilter,
+      tienda: selectedTienda === "all" ? null : selectedTienda,
     })),
     state: { sorting, pagination },
   });
@@ -303,18 +208,10 @@ export function ActualizacionClientTable({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#41454d]" />
-          <Input
-            placeholder="Buscar por código, marca, modelo..."
-            value={globalFilter}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9 border-[#dddddd]"
-          />
+          <Input placeholder="Buscar por código, marca, modelo..." value={globalFilter} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 border-[#dddddd]" />
         </div>
         {!tiendaAsignada && (
-          <Select
-            value={selectedTienda}
-            onValueChange={(v) => handleTiendaChange(v ?? "all")}
-          >
+          <Select value={selectedTienda} onValueChange={(v) => handleTiendaChange(v ?? "all")}>
             <SelectTrigger className="w-[180px] border-[#dddddd]">
               <SelectValue placeholder="Tienda" />
             </SelectTrigger>
@@ -337,16 +234,9 @@ export function ActualizacionClientTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-[#dddddd]">
                   {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="text-[#41454d] font-medium text-xs cursor-pointer select-none"
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
+                    <TableHead key={header.id} className="text-[#41454d] font-medium text-xs cursor-pointer select-none" onClick={header.column.getToggleSortingHandler()}>
                       <div className="flex items-center gap-1">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        {flexRender(header.column.columnDef.header, header.getContext())}
                         <ArrowUpDown className="h-3 w-3 opacity-50" />
                       </div>
                     </TableHead>
@@ -357,34 +247,19 @@ export function ActualizacionClientTable({
             <TableBody>
               {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row, i) => (
-                  <TableRow
-                    key={row.id}
-                    className="border-[#dddddd] hover:bg-[#f8fafc]"
-                    style={{ "--index": i } as React.CSSProperties}
-                  >
+                  <TableRow key={row.id} className="border-[#dddddd] hover:bg-[#f8fafc]" style={{ "--index": i } as React.CSSProperties}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="py-3 text-sm text-[#333840]"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                      <TableCell key={cell.id} className="py-3 text-sm text-[#333840]">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-[#41454d]"
-                  >
+                  <TableCell colSpan={columns.length} className="h-24 text-center text-[#41454d]">
                     No se encontraron productos
-                    {selectedTienda !== "all"
-                      ? ` en ${selectedTienda}`
-                      : ""}
+                    {selectedTienda !== "all" ? ` en ${selectedTienda}` : ""}
                   </TableCell>
                 </TableRow>
               )}
@@ -395,59 +270,26 @@ export function ActualizacionClientTable({
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#41454d]">
-          Mostrando{" "}
-          {table.getState().pagination.pageIndex *
-            table.getState().pagination.pageSize +
-            1}{" "}
-          a{" "}
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) *
-              table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          de {table.getFilteredRowModel().rows.length} productos
+          Mostrando {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} a{" "}
+          {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} de {table.getFilteredRowModel().rows.length} productos
         </p>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="border-[#dddddd]"
-          >
+          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="border-[#dddddd]">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm text-[#333840]">
-            Página {table.getState().pagination.pageIndex + 1} de{" "}
-            {table.getPageCount()}
+            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="border-[#dddddd]"
-          >
+          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="border-[#dddddd]">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <Dialog
-        open={!!previewImage}
-        onOpenChange={() => setPreviewImage(null)}
-      >
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
           <div className="relative aspect-square w-full bg-[#f8fafc]">
-            {previewImage && (
-              <Image
-                src={previewImage}
-                alt="Preview"
-                fill
-                className="object-contain"
-                sizes="(max-width: 600px) 100vw, 600px"
-              />
-            )}
+            {previewImage && <Image src={previewImage} alt="Preview" fill className="object-contain" sizes="(max-width: 600px) 100vw, 600px" />}
             <button
               onClick={() => setPreviewImage(null)}
               className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
