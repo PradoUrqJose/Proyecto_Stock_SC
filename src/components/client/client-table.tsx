@@ -261,9 +261,7 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos, tien
                 const allData: ExportProduct[] = rows.map((r) => r.original as ExportProduct);
                 const result = await exportCatalogoExcel(allData);
                 if (result.success && result.data) {
-                  const binary = atob(result.data);
-                  const bytes = new Uint8Array(binary.length);
-                  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                  const bytes = Uint8Array.from(atob(result.data), c => c.charCodeAt(0));
                   const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");

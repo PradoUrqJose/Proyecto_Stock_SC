@@ -139,10 +139,12 @@ export async function exportCatalogoExcel(
 
       const imageData = imageMap.get(idx);
       if (imageData) {
+        const ROW_EMU = IMAGE_ROW_HEIGHT * 12700;
+        const PAD_ROW_EMU = 38100;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sheet.addImage(imageData.id, {
-          tl: { col: 0.05, row: idx + 1.05 } as any,
-          br: { col: 0.95, row: idx + 1.95 } as any,
+          tl: { nativeCol: 0, nativeColOff: 45000, nativeRow: idx + 1, nativeRowOff: PAD_ROW_EMU } as any,
+          br: { nativeCol: 1, nativeColOff: 0,     nativeRow: idx + 1, nativeRowOff: ROW_EMU - PAD_ROW_EMU } as any,
           editAs: "twoCell",
         });
       }
@@ -278,10 +280,12 @@ export async function exportUpdatesExcel(
 
       const imageData = imageMap.get(idx);
       if (imageData) {
+        const ROW_EMU = IMAGE_ROW_HEIGHT * 12700;
+        const PAD_ROW_EMU = 38100;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sheet.addImage(imageData.id, {
-          tl: { col: 0.05, row: idx + 1.05 } as any,
-          br: { col: 0.95, row: idx + 1.95 } as any,
+          tl: { nativeCol: 0, nativeColOff: 45000, nativeRow: idx + 1, nativeRowOff: PAD_ROW_EMU } as any,
+          br: { nativeCol: 1, nativeColOff: 0,     nativeRow: idx + 1, nativeRowOff: ROW_EMU - PAD_ROW_EMU } as any,
           editAs: "twoCell",
         });
       }

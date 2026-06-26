@@ -66,7 +66,7 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
     handleGuardar,
   } = usePendingDiscounts(data);
 
-  const { exporting, handleExport } = useDiscountExport();
+  const { exporting, exportProgress, handleExport } = useDiscountExport();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState<PaginationState>(() => ({
@@ -324,10 +324,27 @@ export function ActualizacionTable({ data, descuentos }: ActualizacionTableProps
             size="sm"
             disabled={exporting}
             onClick={() => handleExport(table.getFilteredRowModel().rows)}
-            className="rounded-md whitespace-nowrap"
+            className={`whitespace-nowrap transition-all duration-300 ${exporting ? "min-w-[160px]" : ""}`}
           >
-            <Download className="h-4 w-4 mr-2" />
-            {exporting ? "Exportando..." : "Exportar Excel"}
+            {exporting ? (
+              <div className="flex flex-col w-full gap-1 py-0.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span>Exportando...</span>
+                  <span className="font-bold tabular-nums">{Math.round(exportProgress)}%</span>
+                </div>
+                <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#1b61c9] rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${exportProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Excel
+              </>
+            )}
           </Button>
           <Button
             onClick={onGuardar}
