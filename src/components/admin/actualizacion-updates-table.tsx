@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Fragment, useCallback } from "react";
+import { useState, useMemo, Fragment, useCallback, useRef } from "react";
 import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getExpandedRowModel, flexRender, type ColumnDef, type SortingState, type ExpandedState } from "@tanstack/react-table";
@@ -60,6 +60,8 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas, isAc
   const [fetchedVariantes, setFetchedVariantes] = useState<Record<string, VarianteRow[]>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [loadingExcel, setLoadingExcel] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const exportIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [loadingZip, setLoadingZip] = useState(false);
   const [active, setActive] = useState(isActive);
   const [closing, setClosing] = useState(false);
@@ -133,9 +135,18 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas, isAc
   const handleExportExcel = useCallback(async () => {
     if (filteredData.length === 0) return;
     setLoadingExcel(true);
+    setExportProgress(0);
+    exportIntervalRef.current = setInterval(() => {
+      setExportProgress((prev) => {
+        const inc = Math.max(0.4, (90 - prev) * 0.06);
+        return Math.min(90, prev + inc);
+      });
+    }, 300);
     try {
       const result = await exportUpdatesExcel(filteredData);
+      if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
       if (result.success && result.data) {
+        setExportProgress(100);
         const binary = atob(result.data);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -148,7 +159,11 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas, isAc
         URL.revokeObjectURL(url);
       }
     } finally {
-      setLoadingExcel(false);
+      if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+      setTimeout(() => {
+        setLoadingExcel(false);
+        setExportProgress(0);
+      }, 600);
     }
   }, [filteredData]);
 
@@ -296,9 +311,32 @@ export function ActualizacionUpdatesTable({ data, tiendas, productoTiendas, isAc
               Cerrar Actualización
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={loadingExcel || filteredData.length === 0} className="border-[#dddddd] gap-1.5">
-            {loadingExcel ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-            Exportar Excel
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={loadingExcel || filteredData.length === 0}
+            className={`border-[#dddddd] whitespace-nowrap transition-all duration-300 ${loadingExcel ? "min-w-[160px]" : "gap-1.5"}`}
+          >
+            {loadingExcel ? (
+              <div className="flex flex-col w-full gap-1 py-0.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span>Exportando...</span>
+                  <span className="font-bold tabular-nums">{Math.round(exportProgress)}%</span>
+                </div>
+                <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#1b61c9] rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${exportProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <FileSpreadsheet className="h-4 w-4" />
+                Exportar Excel
+              </>
+            )}
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportZip} disabled={loadingZip || filteredData.length === 0} className="border-[#dddddd] gap-1.5">
             {loadingZip ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}

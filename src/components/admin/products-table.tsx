@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTableUrlState } from "@/hooks/use-table-url-state";
 import Image from "next/image";
@@ -66,6 +66,8 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
   }));
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const exportIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState("");
@@ -310,11 +312,20 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
           disabled={exporting}
           onClick={async () => {
             setExporting(true);
+            setExportProgress(0);
+            exportIntervalRef.current = setInterval(() => {
+              setExportProgress((prev) => {
+                const inc = Math.max(0.4, (90 - prev) * 0.06);
+                return Math.min(90, prev + inc);
+              });
+            }, 300);
             try {
               const rows = table.getFilteredRowModel().rows;
               const allData: ExportProduct[] = rows.map((r) => r.original as ExportProduct);
               const result = await exportCatalogoExcel(allData);
+              if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
               if (result.success && result.data) {
+                setExportProgress(100);
                 const binary = atob(result.data);
                 const bytes = new Uint8Array(binary.length);
                 for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -330,13 +341,34 @@ export function ProductsTable({ data, categorias, grupos, marcas, descuentos }: 
                 toast.error(result.msg);
               }
             } finally {
-              setExporting(false);
+              if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+              setTimeout(() => {
+                setExporting(false);
+                setExportProgress(0);
+              }, 600);
             }
           }}
-          className="rounded-md whitespace-nowrap"
+          className={`whitespace-nowrap transition-all duration-300 ${exporting ? "min-w-[160px]" : ""}`}
         >
-          <Download className="h-4 w-4 mr-2" />
-          {exporting ? "Exportando..." : "Exportar Excel"}
+          {exporting ? (
+            <div className="flex flex-col w-full gap-1 py-0.5">
+              <div className="flex items-center justify-between text-xs">
+                <span>Exportando...</span>
+                <span className="font-bold tabular-nums">{Math.round(exportProgress)}%</span>
+              </div>
+              <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#1b61c9] rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${exportProgress}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Excel
+            </>
+          )}
         </Button>
       </div>
 
