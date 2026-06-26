@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown, X, Package, Download } from "lucide-react";
 import { exportCatalogoExcel } from "@/lib/actions/export";
 import { MultiFilter } from "@/components/multi-filter";
@@ -37,6 +38,8 @@ interface ClientTableProps {
   grupos: string[];
   marcas: string[];
   descuentos: string[];
+  tiendas: string[];
+  tiendaStock: Record<string, number>;
 }
 
 function formatPrice(value: number): string {
@@ -52,7 +55,7 @@ function isValidImageUrl(url: string | null): boolean {
   return url.startsWith("http://") || url.startsWith("https://");
 }
 
-export function ClientTable({ data, categorias, grupos, marcas, descuentos }: ClientTableProps) {
+export function ClientTable({ data, categorias, grupos, marcas, descuentos, tiendas, tiendaStock }: ClientTableProps) {
   const { get, getAll, getPage, sync, makePaginationHandler } = useTableUrlState();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState(() => get("q"));
@@ -60,12 +63,13 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
   const [filterGrupo, setFilterGrupo] = useState<string[]>(() => getAll("grupo"));
   const [filterMarca, setFilterMarca] = useState<string[]>(() => getAll("marca"));
   const [filterDescuento, setFilterDescuento] = useState<string[]>(() => getAll("desc"));
+  const [selectedTienda, setSelectedTienda] = useState<string>(() => get("tienda") || "all");
   const [pagination, setPagination] = useState(() => ({ pageIndex: getPage(), pageSize: 15 }));
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const snap = (overrides: Record<string, string | string[] | number> = {}) =>
-    sync({ q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento, page: pagination.pageIndex + 1, ...overrides });
+  const snap = (overrides: Record<string, string | string[] | number | null> = {}) =>
+    sync({ q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento, tienda: selectedTienda === "all" ? null : selectedTienda, page: pagination.pageIndex + 1, ...overrides });
 
   const handleSearchChange = (value: string) => {
     setGlobalFilter(value);
@@ -93,6 +97,12 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
     snap({ desc: values, page: 1 });
   };
 
+  const handleTiendaChange = (value: string) => {
+    setSelectedTienda(value);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+    snap({ tienda: value === "all" ? null : value, page: 1 });
+  };
+
   const filteredData = useMemo(() => {
     let result = [...data];
 
@@ -115,9 +125,15 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
     if (filterDescuento.length > 0) {
       result = result.filter((p) => filterDescuento.includes(`${p.descuento}%`));
     }
+    if (selectedTienda !== "all") {
+      result = result.filter((p) => {
+        const key = `${p.cod_universal}-${p.genero}-${selectedTienda}`;
+        return (tiendaStock[key] ?? 0) > 0;
+      });
+    }
 
     return result;
-  }, [data, globalFilter, filterCategoria, filterGrupo, filterMarca, filterDescuento]);
+  }, [data, globalFilter, filterCategoria, filterGrupo, filterMarca, filterDescuento, selectedTienda, tiendaStock]);
 
   const columns: ColumnDef<ProductoClient>[] = useMemo(
     () => [
@@ -206,7 +222,7 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onPaginationChange: makePaginationHandler(pagination, setPagination, () => ({
-      q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento,
+      q: globalFilter, cat: filterCategoria, grupo: filterGrupo, marca: filterMarca, desc: filterDescuento, tienda: selectedTienda === "all" ? null : selectedTienda,
     })),
     state: { sorting, pagination },
   });
@@ -218,6 +234,17 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#41454d]" />
           <Input placeholder="Buscar por codigo, marca, modelo..." value={globalFilter} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 border-[#dddddd]" />
         </div>
+        <Select value={selectedTienda} onValueChange={(v) => handleTiendaChange(v ?? "all")}>
+          <SelectTrigger className="w-[180px] border-[#dddddd]">
+            <SelectValue>{selectedTienda === "all" ? "Tiendas" : selectedTienda}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tiendas</SelectItem>
+            {tiendas.map((t) => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2 flex-wrap">
           <MultiFilter title="Categoria" options={categorias} selected={filterCategoria} onChange={handleCategoriaChange} />
           <MultiFilter title="Grupo" options={grupos} selected={filterGrupo} onChange={handleGrupoChange} />
@@ -291,7 +318,7 @@ export function ClientTable({ data, categorias, grupos, marcas, descuentos }: Cl
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center text-[#41454d]">
-                    No se encontraron productos
+                    No se encontraron productos{selectedTienda !== "all" ? ` en ${selectedTienda}` : ""}
                   </TableCell>
                 </TableRow>
               )}
