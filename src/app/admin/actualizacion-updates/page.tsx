@@ -29,7 +29,7 @@ export default async function AdminActualizacionUpdatesPage() {
   const updatesResult = await turso.execute(
     `SELECT u.cod_universal, u.genero, u.bf_descuento, u.af_descuento, u.just_updated,
             p.grupo, p.modelo, p.precio_lista,
-            COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
+            COALESCE(CASE WHEN pi.source = 'sistema' THEN pi.imagen_url ELSE NULL END, p.imagen_url) as imagen_url
      FROM descuento_updates u
      JOIN productos p ON p.cod_universal = u.cod_universal AND p.genero = u.genero
      LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal

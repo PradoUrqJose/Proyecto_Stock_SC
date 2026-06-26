@@ -19,7 +19,7 @@ async function fetchImageServer(url: string): Promise<{ buffer: ArrayBuffer; typ
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const contentType = res.headers.get("content-type") || "";
@@ -28,6 +28,32 @@ async function fetchImageServer(url: string): Promise<{ buffer: ArrayBuffer; typ
   } catch {
     return null;
   }
+}
+
+async function fetchImagesConcurrent(
+  urlsToFetch: { url: string; index: number }[],
+  maxConcurrent = 30
+): Promise<Array<{ index: number; result: { buffer: ArrayBuffer; type: string } | null }>> {
+  const results: Array<{ index: number; result: { buffer: ArrayBuffer; type: string } | null }> =
+    new Array(urlsToFetch.length);
+  let pos = 0;
+
+  async function worker() {
+    while (pos < urlsToFetch.length) {
+      const i = pos++;
+      if (i >= urlsToFetch.length) break;
+      const item = urlsToFetch[i];
+      try {
+        results[i] = { index: item.index, result: await fetchImageServer(item.url) };
+      } catch {
+        results[i] = { index: item.index, result: null };
+      }
+    }
+  }
+
+  const workerCount = Math.min(maxConcurrent, urlsToFetch.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return results.filter(Boolean) as Array<{ index: number; result: { buffer: ArrayBuffer; type: string } | null }>;
 }
 
 function getExcelImageType(contentType: string): "png" | "jpeg" | "gif" {
@@ -84,17 +110,10 @@ export async function exportCatalogoExcel(
       .map((p, i) => ({ url: p.imagen_url, index: i }))
       .filter((item) => item.url && item.url.startsWith("https"));
 
-    const imageResults = await Promise.allSettled(
-      urlsToFetch.map(async (item) => {
-        const result = await fetchImageServer(item.url!);
-        return { index: item.index, result };
-      })
-    );
+    const imageResults = await fetchImagesConcurrent(urlsToFetch as { url: string; index: number }[]);
 
     const imageMap = new Map<number, { id: number; width: number; height: number }>();
-    for (const settled of imageResults) {
-      if (settled.status !== "fulfilled") continue;
-      const { index, result } = settled.value;
+    for (const { index, result } of imageResults) {
       if (!result) continue;
       const imgType = getExcelImageType(result.type);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,8 +141,8 @@ export async function exportCatalogoExcel(
       if (imageData) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sheet.addImage(imageData.id, {
-          tl: { col: 0.05, row: (idx + 1) + 0.05 } as any,
-          br: { col: 0.98, row: (idx + 2) - 0.05 } as any,
+          tl: { col: 0.05, row: idx + 1.05 } as any,
+          br: { col: 0.95, row: idx + 1.95 } as any,
           editAs: "twoCell",
         });
       }
@@ -235,17 +254,10 @@ export async function exportUpdatesExcel(
       .map((p, i) => ({ url: p.imagen_url, index: i }))
       .filter((item) => item.url && item.url.startsWith("https"));
 
-    const imageResults = await Promise.allSettled(
-      urlsToFetch.map(async (item) => {
-        const result = await fetchImageServer(item.url!);
-        return { index: item.index, result };
-      })
-    );
+    const imageResults = await fetchImagesConcurrent(urlsToFetch as { url: string; index: number }[]);
 
     const imageMap = new Map<number, { id: number; width: number; height: number }>();
-    for (const settled of imageResults) {
-      if (settled.status !== "fulfilled") continue;
-      const { index, result } = settled.value;
+    for (const { index, result } of imageResults) {
       if (!result) continue;
       const imgType = getExcelImageType(result.type);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,8 +280,8 @@ export async function exportUpdatesExcel(
       if (imageData) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sheet.addImage(imageData.id, {
-          tl: { col: 0.05, row: (idx + 1) + 0.05 } as any,
-          br: { col: 0.98, row: (idx + 2) - 0.05 } as any,
+          tl: { col: 0.05, row: idx + 1.05 } as any,
+          br: { col: 0.95, row: idx + 1.95 } as any,
           editAs: "twoCell",
         });
       }

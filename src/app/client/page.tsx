@@ -13,7 +13,7 @@ export default async function ClientPage() {
       `SELECT p.cod_universal, p.genero, p.marca, p.modelo, 
               p.categoria, p.grupo, p.color, p.descuento, 
               p.precio_lista, p.precio_final, p.stock_total,
-              COALESCE(pi.imagen_url, p.imagen_url) as imagen_url
+              COALESCE(CASE WHEN pi.source = 'sistema' THEN pi.imagen_url ELSE NULL END, p.imagen_url) as imagen_url
        FROM productos p
        LEFT JOIN producto_imagenes pi ON p.cod_universal = pi.cod_universal
        ORDER BY p.marca, p.modelo`
