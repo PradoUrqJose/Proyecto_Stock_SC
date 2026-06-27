@@ -67,7 +67,7 @@ export async function exportCatalogoExcel(
 ): Promise<ActionResult<string>> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || session.role !== "admin" && session.role !== "administrador_general") {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -144,7 +144,7 @@ export async function exportCatalogoExcel(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sheet.addImage(imageData.id, {
           tl: { nativeCol: 0, nativeColOff: 45000, nativeRow: idx + 1, nativeRowOff: PAD_ROW_EMU } as any,
-          br: { nativeCol: 1, nativeColOff: 0,     nativeRow: idx + 1, nativeRowOff: ROW_EMU - PAD_ROW_EMU } as any,
+          br: { nativeCol: 1, nativeColOff: 0, nativeRow: idx + 1, nativeRowOff: ROW_EMU - PAD_ROW_EMU } as any,
           editAs: "twoCell",
         });
       }
@@ -285,7 +285,7 @@ export async function exportUpdatesExcel(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sheet.addImage(imageData.id, {
           tl: { nativeCol: 0, nativeColOff: 45000, nativeRow: idx + 1, nativeRowOff: PAD_ROW_EMU } as any,
-          br: { nativeCol: 1, nativeColOff: 0,     nativeRow: idx + 1, nativeRowOff: ROW_EMU - PAD_ROW_EMU } as any,
+          br: { nativeCol: 1, nativeColOff: 0, nativeRow: idx + 1, nativeRowOff: ROW_EMU - PAD_ROW_EMU } as any,
           editAs: "twoCell",
         });
       }

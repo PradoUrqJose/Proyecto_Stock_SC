@@ -1,6 +1,11 @@
 import { turso } from "./turso";
 import { hashPassword } from "./auth";
 
+// Durante `next build` Next.js pre-renderiza páginas ejecutando código de servidor
+// contra la BD de producción, lo que puede corromper migraciones en curso.
+// Este flag evita que initDatabase() corra en build time.
+const IS_BUILD = process.env.NEXT_PHASE === "phase-production-build";
+
 const MODULES_CATALOG = [
   { id: "dashboard",    nombre: "Dashboard",        ruta: "/admin",                      descripcion: "Panel principal con métricas" },
   { id: "productos",    nombre: "Productos",         ruta: "/admin/productos",            descripcion: "Gestión del catálogo de productos" },
@@ -13,6 +18,7 @@ const MODULES_CATALOG = [
 
 // ── Schema ─────────────────────────────────────────────────
 export async function initDatabase() {
+  if (IS_BUILD) return;
 
   // 1. Crear tablas base (idempotente)
   await turso.batch([
@@ -135,43 +141,6 @@ export async function initDatabase() {
   const hasCerradoEn = historialColumns.rows.some((r) => r.name === "cerrado_en");
   if (!hasCerradoEn) {
     await turso.execute("ALTER TABLE descuento_updates_historial ADD COLUMN cerrado_en TEXT NOT NULL DEFAULT ''");
-  }
-
-  // Limpiar tabla huérfana de migraciones anteriores fallidas
-  await turso.execute("DROP TABLE IF EXISTS users_new");
-
-  // Migración: recrear users sin CHECK constraint para permitir 'administrador_general'
-  // Usa metadata como semáforo para correr exactamente una vez.
-  const roleMigration = await turso.execute(
-    "SELECT valor FROM metadata WHERE clave = 'migration_role_v2'"
-  );
-  if (roleMigration.rows.length === 0) {
-    await turso.execute({
-      sql: "INSERT OR IGNORE INTO metadata (clave, valor) VALUES ('migration_role_v2', 'done')",
-      args: [],
-    });
-    await turso.execute(`
-      CREATE TABLE users_new (
-        id TEXT PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        name TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'client',
-        tienda_id TEXT REFERENCES tiendas(id) ON DELETE SET NULL,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `);
-    await turso.execute(`
-      INSERT INTO users_new
-      SELECT id, email, username, password, name,
-             CASE WHEN role IN ('admin','client','administrador_general') THEN role ELSE 'client' END,
-             tienda_id, created_at
-      FROM users
-    `);
-    await turso.execute("DROP TABLE users");
-    await turso.execute("ALTER TABLE users_new RENAME TO users");
-    await turso.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)");
   }
 
 // ── Seed ───────────────────────────────────────────────────
