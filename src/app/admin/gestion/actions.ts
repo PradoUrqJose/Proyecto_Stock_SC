@@ -7,7 +7,7 @@ import { getSession } from "@/lib/actions";
 import { hashPassword } from "@/lib/auth";
 import { initDatabase } from "@/lib/db-schema";
 import { checkRateLimit } from "@/lib/rate-limit";
-import type { Tienda, User } from "@/types";
+import type { Tienda, User, UserRole } from "@/types";
 import type { ActionResult } from "@/types";
 
 // ─────────────────────────────────────────────
@@ -17,7 +17,7 @@ import type { ActionResult } from "@/types";
 async function requireAdmin() {
   await initDatabase();
   const session = await getSession();
-  if (!session || session.role !== "admin") {
+  if (!session || (session.role !== "admin" && session.role !== "administrador_general")) {
     throw new Error("No autorizado.");
   }
   return session;
@@ -160,7 +160,7 @@ export async function getUsuarios(): Promise<User[]> {
     email: r.email as string,
     username: r.username as string,
     name: r.name as string,
-    role: r.role as "admin" | "client",
+    role: r.role as UserRole,
     tienda_id: (r.tienda_id as string) ?? null,
     tienda_nombre: (r.tienda_nombre as string) ?? null,
     created_at: r.created_at as string,
@@ -172,7 +172,7 @@ export async function createUsuario(data: {
   email: string;
   username: string;
   password: string;
-  role: "admin" | "client";
+  role: UserRole;
   tienda_id: string | null;
 }): Promise<ActionResult> {
   try {
@@ -236,7 +236,7 @@ export async function updateUsuario(
     name: string;
     email: string;
     username: string;
-    role: "admin" | "client";
+    role: UserRole;
     tienda_id: string | null;
     password?: string;
   }
@@ -269,9 +269,9 @@ export async function updateUsuario(
       return { success: false, msg: "Ya existe otro usuario con ese nombre de usuario." };
     }
 
-    // No permitir que un admin se quite el rol de admin a sí mismo
-    if (session.id === id && data.role !== "admin") {
-      return { success: false, msg: "No puedes cambiar tu propio rol de administrador." };
+    // No permitir que un admin se quite el acceso de administrador a sí mismo
+    if (session.id === id && data.role === "client") {
+      return { success: false, msg: "No puedes quitarte el acceso de administrador." };
     }
 
     if (data.password && data.password.length > 0) {

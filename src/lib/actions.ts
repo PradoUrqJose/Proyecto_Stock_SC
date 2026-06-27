@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function signOut() {
   const cookieStore = await cookies();
@@ -14,4 +15,15 @@ export async function getSession() {
 
   const { verifyToken } = await import("@/lib/auth");
   return verifyToken(token);
+}
+
+export async function requireModule(moduleId: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  if (session.role === "administrador_general") return session;
+
+  if (session.role === "admin" && session.modules?.includes(moduleId)) return session;
+
+  redirect("/admin");
 }

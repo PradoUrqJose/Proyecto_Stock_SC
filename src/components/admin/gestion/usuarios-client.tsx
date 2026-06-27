@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, ShieldCheck, User as UserIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ShieldCheck, ShieldAlert, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createUsuario, updateUsuario, deleteUsuario } from "@/app/admin/gestion/actions";
-import type { User, Tienda } from "@/types";
+import type { User, Tienda, UserRole } from "@/types";
 
 interface Props {
   usuarios: User[];
@@ -43,7 +43,7 @@ type FormData = {
   email: string;
   username: string;
   password: string;
-  role: "admin" | "client";
+  role: UserRole;
   tienda_id: string | null;
 };
 
@@ -92,7 +92,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
         name: createForm.name,
         email: createForm.email,
         username: createForm.username,
-        role: createForm.role,
+        role: createForm.role as UserRole,
         tienda_id: createForm.tienda_id,
         tienda_nombre: tiendaNombre(createForm.tienda_id),
         created_at: "",
@@ -118,7 +118,7 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
       email: u.email,
       username: u.username,
       password: "",
-      role: u.role,
+      role: u.role as UserRole,
       tienda_id: u.tienda_id,
     });
   }
@@ -219,15 +219,19 @@ export function UsuariosClient({ usuarios: initial, tiendas, currentUserId }: Pr
                   <Badge
                     variant="outline"
                     className={
-                      u.role === "admin"
+                      u.role === "administrador_general"
+                        ? "border-violet-600 text-violet-700 bg-violet-50 gap-1"
+                        : u.role === "admin"
                         ? "border-[#181d26] text-[#181d26] bg-[#f1f3f7] gap-1"
                         : "border-[#dddddd] text-[#41454d] gap-1"
                     }
                   >
-                    {u.role === "admin"
+                    {u.role === "administrador_general"
+                      ? <ShieldAlert className="h-3 w-3" />
+                      : u.role === "admin"
                       ? <ShieldCheck className="h-3 w-3" />
                       : <UserIcon className="h-3 w-3" />}
-                    {u.role}
+                    {u.role === "administrador_general" ? "Super Admin" : u.role}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -419,13 +423,14 @@ function UserForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-sm text-[#333840]">Rol</Label>
-          <Select value={form.role} onValueChange={(v) => onChange({ ...form, role: v as "admin" | "client" })}>
+          <Select value={form.role} onValueChange={(v) => onChange({ ...form, role: v as UserRole })}>
             <SelectTrigger className="border-[#dddddd]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="client">Cliente</SelectItem>
               <SelectItem value="admin">Administrador</SelectItem>
+              <SelectItem value="administrador_general">Super Admin</SelectItem>
             </SelectContent>
           </Select>
         </div>

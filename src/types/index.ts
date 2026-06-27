@@ -61,14 +61,24 @@ export interface Tienda {
   created_at: string;
 }
 
+export type UserRole = "admin" | "client" | "administrador_general";
+
+export interface Module {
+  id: string;
+  nombre: string;
+  ruta: string;
+  descripcion: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
   username: string;
   name: string;
-  role: "admin" | "client";
+  role: UserRole;
   tienda_id: string | null;
   tienda_nombre: string | null;
+  modules?: string[];
   created_at: string;
 }
 

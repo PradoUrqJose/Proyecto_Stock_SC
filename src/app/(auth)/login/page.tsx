@@ -34,7 +34,8 @@ export default function LoginPage() {
       }
 
       toast.success("Bienvenido");
-      router.push(data.user.role === "admin" ? "/admin" : "/client");
+      const isAdminRole = data.user.role === "admin" || data.user.role === "administrador_general";
+      router.push(isAdminRole ? "/admin" : "/client");
     } catch {
       toast.error("Error de conexion");
     } finally {

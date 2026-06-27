@@ -10,14 +10,17 @@ if (!SECRET || SECRET.length === 0) {
   throw new Error("BETTER_AUTH_SECRET is required. Set it in .env.local");
 }
 
+import type { UserRole } from "@/types";
+
 export interface SessionUser {
   id: string;
   email: string;
   username: string;
   name: string;
-  role: "admin" | "client";
+  role: UserRole;
   tienda_id: string | null;
   tienda_nombre: string | null;
+  modules?: string[];
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -63,7 +66,7 @@ export async function createUser(
   username: string,
   password: string,
   name: string,
-  role: "admin" | "client" = "client",
+  role: UserRole = "client",
   tienda_id: string | null = null
 ) {
   const id = crypto.randomUUID();
@@ -95,14 +98,27 @@ export async function authenticate(
     tienda_nombre = (tiendaResult.rows[0]?.nombre as string) ?? null;
   }
 
+  const role = user.role as UserRole;
+
+  // Para admin, cargar los módulos asignados desde la DB
+  let modules: string[] | undefined;
+  if (role === "admin") {
+    const modulesResult = await turso.execute({
+      sql: "SELECT module_id FROM admin_modules WHERE user_id = ? ORDER BY module_id",
+      args: [user.id as string],
+    });
+    modules = modulesResult.rows.map((r) => r.module_id as string);
+  }
+
   const sessionUser: SessionUser = {
     id: user.id as string,
     email: user.email as string,
     username: user.username as string,
     name: user.name as string,
-    role: user.role as "admin" | "client",
+    role,
     tienda_id: (user.tienda_id as string) ?? null,
     tienda_nombre,
+    modules,
   };
 
   const token = await createToken(sessionUser);

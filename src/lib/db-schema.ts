@@ -1,8 +1,20 @@
 import { turso } from "./turso";
 import { hashPassword } from "./auth";
 
+const MODULES_CATALOG = [
+  { id: "dashboard",    nombre: "Dashboard",        ruta: "/admin",                      descripcion: "Panel principal con métricas" },
+  { id: "productos",    nombre: "Productos",         ruta: "/admin/productos",            descripcion: "Gestión del catálogo de productos" },
+  { id: "actualizacion",nombre: "Actualización",    ruta: "/admin/actualizacion",        descripcion: "Actualización de descuentos" },
+  { id: "reposicion",   nombre: "Reposición",        ruta: "/admin/reposicion",           descripcion: "Gestión de reposición de stock" },
+  { id: "registro",     nombre: "Registro Cambios",  ruta: "/admin/actualizacion-updates",descripcion: "Historial de cambios de descuentos" },
+  { id: "tiendas",      nombre: "Tiendas",           ruta: "/admin/gestion/tiendas",      descripcion: "Gestión de tiendas" },
+  { id: "usuarios",     nombre: "Usuarios",          ruta: "/admin/gestion/usuarios",     descripcion: "Gestión de usuarios" },
+];
+
 // ── Schema ─────────────────────────────────────────────────
 export async function initDatabase() {
+
+  // 1. Crear tablas base (idempotente)
   await turso.batch([
     `CREATE TABLE IF NOT EXISTS tiendas (
       id TEXT PRIMARY KEY,
@@ -15,7 +27,7 @@ export async function initDatabase() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'client' CHECK(role IN ('admin', 'client')),
+      role TEXT NOT NULL DEFAULT 'client',
       tienda_id TEXT REFERENCES tiendas(id) ON DELETE SET NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );`,
@@ -76,9 +88,21 @@ export async function initDatabase() {
       just_updated TEXT NOT NULL,
       cerrado_en TEXT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS modules (
+      id TEXT PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      ruta TEXT NOT NULL,
+      descripcion TEXT
+    );`,
+    `CREATE TABLE IF NOT EXISTS admin_modules (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, module_id)
+    );`,
   ], "write");
 
 // ── Migrations ─────────────────────────────────────────────
+
   // Migración: agregar tienda_id a users si no existe
   const userColumns = await turso.execute("PRAGMA table_info(users)");
   const hasTiendaId = userColumns.rows.some((r) => r.name === "tienda_id");
@@ -93,8 +117,6 @@ export async function initDatabase() {
   if (!hasUsername) {
     await turso.execute("ALTER TABLE users ADD COLUMN username TEXT");
     await turso.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)");
-
-    // Migrar usuarios existentes: generar username desde email
     const usersResult = await turso.execute("SELECT id, email FROM users WHERE username IS NULL");
     const usedUsernames = new Set<string>();
     for (const row of usersResult.rows) {
@@ -102,15 +124,9 @@ export async function initDatabase() {
       const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9._-]/g, "");
       let username = baseUsername;
       let counter = 1;
-      while (usedUsernames.has(username)) {
-        username = `${baseUsername}${counter}`;
-        counter++;
-      }
+      while (usedUsernames.has(username)) { username = `${baseUsername}${counter}`; counter++; }
       usedUsernames.add(username);
-      await turso.execute({
-        sql: "UPDATE users SET username = ? WHERE id = ?",
-        args: [username, row.id as string],
-      });
+      await turso.execute({ sql: "UPDATE users SET username = ? WHERE id = ?", args: [username, row.id as string] });
     }
   }
 
@@ -121,21 +137,80 @@ export async function initDatabase() {
     await turso.execute("ALTER TABLE descuento_updates_historial ADD COLUMN cerrado_en TEXT NOT NULL DEFAULT ''");
   }
 
+  // Limpiar tabla huérfana de migraciones anteriores fallidas
+  await turso.execute("DROP TABLE IF EXISTS users_new");
+
+  // Migración: recrear users sin CHECK constraint para permitir 'administrador_general'
+  // Usa metadata como semáforo para correr exactamente una vez.
+  const roleMigration = await turso.execute(
+    "SELECT valor FROM metadata WHERE clave = 'migration_role_v2'"
+  );
+  if (roleMigration.rows.length === 0) {
+    await turso.execute({
+      sql: "INSERT OR IGNORE INTO metadata (clave, valor) VALUES ('migration_role_v2', 'done')",
+      args: [],
+    });
+    await turso.execute(`
+      CREATE TABLE users_new (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'client',
+        tienda_id TEXT REFERENCES tiendas(id) ON DELETE SET NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    await turso.execute(`
+      INSERT INTO users_new
+      SELECT id, email, username, password, name,
+             CASE WHEN role IN ('admin','client','administrador_general') THEN role ELSE 'client' END,
+             tienda_id, created_at
+      FROM users
+    `);
+    await turso.execute("DROP TABLE users");
+    await turso.execute("ALTER TABLE users_new RENAME TO users");
+    await turso.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)");
+  }
+
 // ── Seed ───────────────────────────────────────────────────
-  const adminUsername = process.env.ADMIN_USERNAME || "admin";
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
 
-  const existing = await turso.execute({
+  // Seed admin inicial (solo en instalaciones nuevas)
+  const seedAdminUsername = process.env.ADMIN_USERNAME || "admin";
+  const seedAdminPassword = process.env.ADMIN_PASSWORD || "admin123";
+  const existingAdmin = await turso.execute({
     sql: "SELECT id FROM users WHERE username = ?",
-    args: [adminUsername],
+    args: [seedAdminUsername],
   });
-
-  if (existing.rows.length === 0) {
+  if (existingAdmin.rows.length === 0) {
     const id = crypto.randomUUID();
-    const hashed = await hashPassword(adminPassword);
+    const hashed = await hashPassword(seedAdminPassword);
     await turso.execute({
       sql: "INSERT INTO users (id, email, username, password, name, role) VALUES (?, ?, ?, ?, ?, ?)",
-      args: [id, `${adminUsername}@admin.local`, adminUsername, hashed, "Administrador", "admin"],
+      args: [id, `${seedAdminUsername}@admin.local`, seedAdminUsername, hashed, "Administrador", "administrador_general"],
     });
+  }
+
+  // Seed módulos: INSERT OR IGNORE — siempre sincroniza el catálogo completo
+  await turso.batch(
+    MODULES_CATALOG.map((m) => ({
+      sql: "INSERT OR IGNORE INTO modules (id, nombre, ruta, descripcion) VALUES (?, ?, ?, ?)",
+      args: [m.id, m.nombre, m.ruta, m.descripcion],
+    })),
+    "write"
+  );
+
+// ── Garantías de producción ────────────────────────────────
+
+  // Si no existe ningún administrador_general, promover al primer admin que exista.
+  // Esto recupera cualquier instalación sin importar el username de la cuenta.
+  const generalCount = await turso.execute(
+    "SELECT COUNT(*) as cnt FROM users WHERE role = 'administrador_general'"
+  );
+  if ((generalCount.rows[0].cnt as number) === 0) {
+    await turso.execute(
+      "UPDATE users SET role = 'administrador_general' WHERE id = (SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1)"
+    );
   }
 }

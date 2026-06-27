@@ -17,42 +17,61 @@ import {
   Users,
   Wrench,
   History,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
+import type { UserRole } from "@/types";
+
 interface SidebarProps {
-  role: "admin" | "client";
+  role: UserRole;
+  modules?: string[];
 }
 
 const adminLinks = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, moduleId: "dashboard" },
 ];
 
 const adminOperacionLinks = [
-  { href: "/admin/productos", label: "Productos", icon: Package },
-  { href: "/admin/actualizacion", label: "Actualización", icon: Percent },
-  { href: "/admin/reposicion", label: "Reposición", icon: RefreshCcw },
-  { href: "/admin/actualizacion-updates", label: "Registro Cambios", icon: History },
+  { href: "/admin/productos", label: "Productos", icon: Package, moduleId: "productos" },
+  { href: "/admin/actualizacion", label: "Actualización", icon: Percent, moduleId: "actualizacion" },
+  { href: "/admin/reposicion", label: "Reposición", icon: RefreshCcw, moduleId: "reposicion" },
+  { href: "/admin/actualizacion-updates", label: "Registro Cambios", icon: History, moduleId: "registro" },
 ];
 
 const adminGestionLinks = [
-  { href: "/admin/gestion/tiendas", label: "Tiendas", icon: Store },
-  { href: "/admin/gestion/usuarios", label: "Usuarios", icon: Users },
+  { href: "/admin/gestion/tiendas", label: "Tiendas", icon: Store, moduleId: "tiendas" },
+  { href: "/admin/gestion/usuarios", label: "Usuarios", icon: Users, moduleId: "usuarios" },
+];
+
+const adminGeneralGestionLinks = [
+  { href: "/admin/gestion/tiendas", label: "Tiendas", icon: Store, moduleId: "tiendas" },
+  { href: "/admin/gestion/usuarios", label: "Usuarios", icon: Users, moduleId: "usuarios" },
+  { href: "/admin/gestion/permisos", label: "Permisos", icon: ShieldCheck, moduleId: null },
 ];
 
 const clientLinks = [
-  { href: "/client", label: "Catalogo", icon: Search },
-  { href: "/client/actualizacion", label: "Actualización", icon: Percent },
-  { href: "/client/reposicion", label: "Reposición", icon: RefreshCcw },
+  { href: "/client", label: "Catalogo", icon: Search, moduleId: null },
+  { href: "/client/actualizacion", label: "Actualización", icon: Percent, moduleId: null },
+  { href: "/client/reposicion", label: "Reposición", icon: RefreshCcw, moduleId: null },
 ];
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, modules }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const links = role === "admin" ? adminLinks : clientLinks;
+  const isAdmin = role === "admin" || role === "administrador_general";
+  const isGeneralAdmin = role === "administrador_general";
+
+  const canSeeModule = (moduleId: string | null) => {
+    if (!moduleId) return true;
+    if (isGeneralAdmin) return true;
+    return modules?.includes(moduleId) ?? false;
+  };
+
+  const links = isAdmin ? adminLinks : clientLinks;
 
   const isActiveLink = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -68,11 +87,13 @@ export function Sidebar({ role }: SidebarProps) {
         <h1 className="text-lg font-semibold text-white tracking-tight">
           Mercaderia
         </h1>
-        <p className="text-xs text-white/50 mt-0.5 capitalize">{role} Panel</p>
+        <p className="text-xs text-white/50 mt-0.5">
+          {role === "administrador_general" ? "Super Admin" : role === "admin" ? "Admin Panel" : "Cliente"}
+        </p>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {links.map((link) => {
+        {links.filter((l) => canSeeModule(l.moduleId)).map((link) => {
           const isActive =
             link.href === "/admin" || link.href === "/client"
               ? pathname === link.href
@@ -95,64 +116,74 @@ export function Sidebar({ role }: SidebarProps) {
           );
         })}
 
-        {role === "admin" && (
-          <div className="pt-3">
-            <div className="flex items-center gap-2 px-3 pb-1.5">
-              <Wrench className="h-3.5 w-3.5 text-white/30" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
-                Operación
-              </span>
+        {isAdmin && (() => {
+          const visibleOperacion = adminOperacionLinks.filter((l) => canSeeModule(l.moduleId));
+          if (visibleOperacion.length === 0) return null;
+          return (
+            <div className="pt-3">
+              <div className="flex items-center gap-2 px-3 pb-1.5">
+                <Wrench className="h-3.5 w-3.5 text-white/30" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
+                  Operación
+                </span>
+              </div>
+              {visibleOperacion.map((link) => {
+                const isActive = isActiveLink(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-white/15 text-white"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </Link>
+                );
+              })}
             </div>
-            {adminOperacionLinks.map((link) => {
-              const isActive = isActiveLink(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-white/15 text-white"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
-        {role === "admin" && (
-          <div className="pt-3">
-            <div className="flex items-center gap-2 px-3 pb-1.5">
-              <Settings className="h-3.5 w-3.5 text-white/30" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
-                Gestión
-              </span>
+          );
+        })()}
+
+        {isAdmin && (() => {
+          const gestionList = isGeneralAdmin ? adminGeneralGestionLinks : adminGestionLinks;
+          const visibleGestion = gestionList.filter((l) => canSeeModule(l.moduleId));
+          if (visibleGestion.length === 0) return null;
+          return (
+            <div className="pt-3">
+              <div className="flex items-center gap-2 px-3 pb-1.5">
+                <Settings className="h-3.5 w-3.5 text-white/30" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
+                  Gestión
+                </span>
+              </div>
+              {visibleGestion.map((link) => {
+                const isActive = isActiveLink(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-white/15 text-white"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </Link>
+                );
+              })}
             </div>
-            {adminGestionLinks.map((link) => {
-              const isActive = isActiveLink(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-white/15 text-white"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+          );
+        })()}
       </nav>
 
       <div className="px-3 py-4 border-t border-white/10">
