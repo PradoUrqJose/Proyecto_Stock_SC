@@ -3,11 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
-import { initDatabase } from "@/lib/db-schema";
 import type { Module, User, ActionResult } from "@/types";
 
 async function requireGeneralAdmin() {
-  await initDatabase();
   const session = await getSession();
   if (!session || session.role !== "administrador_general") {
     throw new Error("No autorizado.");

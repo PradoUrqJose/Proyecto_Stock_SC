@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
 import { hashPassword } from "@/lib/auth";
-import { initDatabase } from "@/lib/db-schema";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { Tienda, User, UserRole } from "@/types";
 import type { ActionResult } from "@/types";
@@ -15,7 +14,6 @@ import type { ActionResult } from "@/types";
 // ─────────────────────────────────────────────
 
 async function requireAdmin() {
-  await initDatabase();
   const session = await getSession();
   if (!session || (session.role !== "admin" && session.role !== "administrador_general")) {
     throw new Error("No autorizado.");

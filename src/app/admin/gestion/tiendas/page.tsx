@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getTiendas, getAlmacenesDisponibles } from "../actions";
 import { TiendasClient } from "@/components/admin/gestion/tiendas-client";
 import type { Metadata } from "next";
@@ -18,7 +19,9 @@ export default async function TiendasPage() {
           Las tiendas deben coincidir con el nombre del almacén en la base de datos.
         </p>
       </div>
-      <TiendasClient tiendas={tiendas} almacenes={almacenes} />
+      <Suspense fallback={null}>
+        <TiendasClient tiendas={tiendas} almacenes={almacenes} />
+      </Suspense>
     </div>
   );
 }

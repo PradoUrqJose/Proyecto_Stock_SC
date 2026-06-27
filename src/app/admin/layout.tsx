@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/sidebar";
 import { getSession } from "@/lib/actions";
+import { initDatabase } from "@/lib/db-schema";
 import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
@@ -7,6 +8,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await initDatabase();
+
   const session = await getSession();
   if (!session || (session.role !== "admin" && session.role !== "administrador_general")) {
     redirect("/login");

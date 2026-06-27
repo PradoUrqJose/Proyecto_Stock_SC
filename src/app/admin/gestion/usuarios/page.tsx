@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getUsuarios, getTiendas } from "../actions";
 import { UsuariosClient } from "@/components/admin/gestion/usuarios-client";
 import { getSession } from "@/lib/actions";
@@ -20,11 +21,13 @@ export default async function UsuariosPage() {
           Crea y gestiona los accesos. Asigna una tienda a los clientes para filtrar su vista.
         </p>
       </div>
-      <UsuariosClient
-        usuarios={usuarios}
-        tiendas={tiendas}
-        currentUserId={session?.id ?? ""}
-      />
+      <Suspense fallback={null}>
+        <UsuariosClient
+          usuarios={usuarios}
+          tiendas={tiendas}
+          currentUserId={session?.id ?? ""}
+        />
+      </Suspense>
     </div>
   );
 }
