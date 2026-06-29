@@ -32,7 +32,7 @@ export function usePendingDiscounts(data: Producto[]) {
   const dataWithPending = useMemo<Row[]>(() => {
     if (!loaded) return data as Row[];
     return data.map((p) => {
-      const key = `${p.cod_universal}-${p.genero}`;
+      const key = JSON.stringify([p.cod_universal, p.genero]);
       const pendingValue = pending[key];
       if (pendingValue !== undefined) {
         return { ...p, descuentoN: pendingValue };
@@ -58,17 +58,22 @@ export function usePendingDiscounts(data: Producto[]) {
   );
 
   const handleGuardar = useCallback(async () => {
-    const updates = Object.entries(pending).map(([key, af_descuento]) => {
-      const [cod_universal, genero] = key.split("-");
+    const updates = Object.entries(pending).flatMap(([key, af_descuento]) => {
+      let cod_universal: string, genero: string;
+      try {
+        [cod_universal, genero] = JSON.parse(key);
+      } catch {
+        return [];
+      }
       const original = data.find(
         (p) => p.cod_universal === cod_universal && p.genero === genero
       );
-      return {
+      return [{
         cod_universal,
         genero,
         bf_descuento: original?.descuento ?? 0,
         af_descuento,
-      };
+      }];
     });
 
     const result = await guardarDescuentos(updates);

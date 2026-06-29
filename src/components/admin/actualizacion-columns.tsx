@@ -116,7 +116,7 @@ export function getColumns(
       accessorKey: "descuentoN",
       header: "Desc. Nuevo",
       cell: ({ row }) => {
-        const codKey = `${row.original.cod_universal}-${row.original.genero}`;
+        const codKey = JSON.stringify([row.original.cod_universal, row.original.genero]);
         const current = row.original.descuentoN;
         const originalDesc = row.original.descuento;
         return (
