@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
+import { isAdminRole } from "@/lib/auth";
 import type { ActionResult } from "@/types";
 import type { InValue } from "@libsql/core/api";
 
@@ -23,7 +24,7 @@ export interface ReposicionItem {
 export async function buscarReposicion(codigos: string[]): Promise<ActionResult<ReposicionItem[]>> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, data: [], msg: "No autorizado." };
     }
 
@@ -92,7 +93,7 @@ export async function buscarReposicion(codigos: string[]): Promise<ActionResult<
 export async function aplicarReposicion(codigos: string[]): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -136,7 +137,7 @@ export async function isReposicionActiva(): Promise<boolean> {
 export async function obtenerReposicionActual(): Promise<ReposicionItem[]> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") return [];
+    if (!session || !isAdminRole(session.role)) return [];
 
     const codigosResult = await turso.execute("SELECT cod_universal FROM remove_discount");
     const codigos = codigosResult.rows.map((r) => r.cod_universal as string);
@@ -176,7 +177,7 @@ export async function obtenerReposicionActual(): Promise<ReposicionItem[]> {
 export async function publicarReposicion(): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -205,7 +206,7 @@ export async function publicarReposicion(): Promise<ActionResult> {
 export async function detenerReposicion(): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 

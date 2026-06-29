@@ -17,6 +17,15 @@ export async function getSession() {
   return verifyToken(token);
 }
 
+export async function requireAdmin() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  if (session.role === "admin" || session.role === "administrador_general") return session;
+
+  redirect("/admin");
+}
+
 export async function requireModule(moduleId: string) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -27,3 +36,4 @@ export async function requireModule(moduleId: string) {
 
   redirect("/admin");
 }
+

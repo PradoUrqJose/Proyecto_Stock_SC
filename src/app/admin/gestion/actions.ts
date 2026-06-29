@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
+import { isAdminRole } from "@/lib/auth";
 import { hashPassword } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { Tienda, User, UserRole } from "@/types";
@@ -15,7 +16,7 @@ import type { ActionResult } from "@/types";
 
 async function requireAdmin() {
   const session = await getSession();
-  if (!session || (session.role !== "admin" && session.role !== "administrador_general")) {
+  if (!session || !isAdminRole(session.role)) {
     throw new Error("No autorizado.");
   }
   return session;

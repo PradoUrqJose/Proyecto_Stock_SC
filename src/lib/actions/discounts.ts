@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
+import { isAdminRole } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types";
 import type { InValue } from "@libsql/core/api";
@@ -20,7 +21,7 @@ export async function guardarDescuentos(
 ): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -94,7 +95,7 @@ export async function guardarDescuentos(
 export async function detenerActualizacion(): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 

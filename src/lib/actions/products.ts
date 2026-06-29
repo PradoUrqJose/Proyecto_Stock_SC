@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { turso } from "@/lib/turso";
 import { getSession } from "@/lib/actions";
+import { isAdminRole } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import * as XLSX from "xlsx";
 import * as cheerio from "cheerio";
@@ -51,7 +52,7 @@ interface FinalizeParams {
 export async function uploadStock(formData: FormData): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -256,7 +257,7 @@ export async function uploadStock(formData: FormData): Promise<ActionResult> {
 export async function initUpload(): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -290,7 +291,7 @@ export async function uploadProductosBatch(
 ): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -320,7 +321,7 @@ export async function uploadVariantesBatch(
 ): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -349,7 +350,7 @@ export async function finalizeUpload(
 ): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -404,7 +405,7 @@ export async function finalizeUpload(
 export async function limpiarImagenesRotas() {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -428,7 +429,7 @@ export async function setProductoImagen(
 ): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -460,7 +461,7 @@ export async function removeProductoImagen(
 ): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -484,7 +485,7 @@ export async function getVariantesByProducto(
 ): Promise<ActionResult<VarianteRow[]>> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 

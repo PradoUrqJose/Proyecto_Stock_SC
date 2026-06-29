@@ -1,6 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/actions";
+import { isAdminRole } from "@/lib/auth";
 import type { ActionResult, ExportProduct } from "@/types";
 
 interface UpdateRowExport {
@@ -67,7 +68,7 @@ export async function exportCatalogoExcel(
 ): Promise<ActionResult<string>> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin" && session.role !== "administrador_general") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 
@@ -215,7 +216,7 @@ export async function exportUpdatesExcel(
 ): Promise<ActionResult<string>> {
   try {
     const session = await getSession();
-    if (!session || session.role !== "admin") {
+    if (!session || !isAdminRole(session.role)) {
       return { success: false, msg: "No autorizado." };
     }
 

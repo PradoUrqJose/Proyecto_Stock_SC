@@ -125,6 +125,10 @@ export async function authenticate(
   return { user: sessionUser, token };
 }
 
+export function isAdminRole(role: string): boolean {
+  return role === "admin" || role === "administrador_general";
+}
+
 export async function getSessionFromRequest(
   request: Request
 ): Promise<SessionUser | null> {
